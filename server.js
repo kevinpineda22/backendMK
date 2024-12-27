@@ -13,7 +13,6 @@ const app = express();
 // Inicializar Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-
 // Configuración de Multer para solo usar memoria
 const storage = multer.memoryStorage(); // Usamos memoryStorage para mantener el archivo solo en la memoria
 const upload = multer({
@@ -27,7 +26,6 @@ const upload = multer({
         }
     },
 });
-
 
 // Conexión a la base de datos
 const { Pool } = pkg;
@@ -46,7 +44,11 @@ pool
     });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN || '*', // Configura el dominio permitido o usa '*' para permitir todos
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    optionsSuccessStatus: 200,
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -57,6 +59,14 @@ function normalizeFileName(fileName) {
         .replace(/[\u0300-\u036f]/g, "") // Elimina los acentos
         .replace(/[^a-zA-Z0-9._-]/g, "_"); // Reemplaza caracteres no válidos por "_"
 }
+
+// Endpoint de prueba para verificar el estado del servidor
+app.get('/', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: '¡El backend está funcionando correctamente!',
+    });
+});
 
 // Ruta POST para recibir datos del formulario
 app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
@@ -159,3 +169,4 @@ const PORT = process.env.PORT || 7777;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
+
