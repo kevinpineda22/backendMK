@@ -56,7 +56,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 function normalizeFileName(fileName) {
     return fileName
         .normalize("NFD") // Descompone los caracteres acentuados
-        .replace(/[\u0300-\u036f]/g, "") // Elimina los acentos
+        .replace(/[̀-\u036f]/g, "") // Elimina los acentos
         .replace(/[^a-zA-Z0-9._-]/g, "_"); // Reemplaza caracteres no válidos por "_"
 }
 
@@ -66,6 +66,18 @@ app.get('/', (req, res) => {
         success: true,
         message: '¡El backend está funcionando correctamente!',
     });
+});
+
+// Endpoint para obtener todas las postulaciones
+app.get('/api/postulaciones', async (req, res) => {
+    try {
+        const query = 'SELECT * FROM "Postulaciones"';
+        const { rows } = await pool.query(query);
+        res.status(200).json({ success: true, data: rows });
+    } catch (err) {
+        console.error("Error al obtener datos de la base de datos: ", err.message);
+        res.status(500).json({ success: false, message: "Error al obtener datos", error: err.message });
+    }
 });
 
 // Ruta POST para recibir datos del formulario
@@ -169,4 +181,3 @@ const PORT = process.env.PORT || 7777;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
-
