@@ -14,7 +14,7 @@ const app = express();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // Configuración de Multer para solo usar memoria
-const storage = multer.memoryStorage(); // Usamos memoryStorage para mantener el archivo solo en la memoria
+const storage = multer.memoryStorage();
 const upload = multer({
     storage,
     limits: { fileSize: 600 * 1024 }, // Limita el tamaño a 600KB
@@ -45,7 +45,7 @@ pool
 
 // Middleware
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGIN || '*', // Configura el dominio permitido o usa '*' para permitir todos
+    origin: process.env.ALLOWED_ORIGIN || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     optionsSuccessStatus: 200,
 }));
@@ -55,9 +55,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Función para normalizar el nombre del archivo
 function normalizeFileName(fileName) {
     return fileName
-        .normalize("NFD") // Descompone los caracteres acentuados
-        .replace(/[̀-\u036f]/g, "") // Elimina los acentos
-        .replace(/[^a-zA-Z0-9._-]/g, "_"); // Reemplaza caracteres no válidos por "_"
+        .normalize("NFD")
+        .replace(/[̀-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
 // Endpoint de prueba para verificar el estado del servidor
@@ -80,6 +80,27 @@ app.get('/api/postulaciones', async (req, res) => {
     }
 });
 
+// Endpoint para descargar archivos desde Supabase
+app.get('/api/descargar/:filePath', async (req, res) => {
+    const { filePath } = req.params;
+
+    try {
+        const { data, error } = await supabase.storage.from('hojas-vida').download(filePath);
+
+        if (error) {
+            console.error('Error al descargar el archivo:', error.message);
+            return res.status(400).json({ success: false, message: 'No se pudo descargar el archivo.' });
+        }
+
+        res.setHeader('Content-Type', data.type);
+        res.setHeader('Content-Disposition', `attachment; filename="${filePath.split('/').pop()}"`);
+        res.send(data);
+    } catch (err) {
+        console.error('Error durante la descarga:', err.message);
+        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+    }
+});
+
 // Ruta POST para recibir datos del formulario
 app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
     try {
@@ -96,13 +117,11 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
             return res.status(400).json({ success: false, message: "La hoja de vida es obligatoria." });
         }
 
-        // Generar un nombre seguro y normalizado para el archivo
         const safeFileName = normalizeFileName(hojaVidaFile.originalname);
         const filePath = `hojas-vida/${Date.now()}-${safeFileName}`;
 
-        // Subir el archivo PDF a Supabase
         const { data, error } = await supabase.storage
-            .from('hojas-vida') // Reemplaza con el nombre de tu bucket
+            .from('hojas-vida')
             .upload(filePath, hojaVidaFile.buffer, {
                 contentType: hojaVidaFile.mimetype,
             });
@@ -112,10 +131,8 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
             return res.status(500).json({ success: false, message: "Error al subir el archivo." });
         }
 
-        // URL pública del archivo
         const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/${data.path}`;
 
-        // Consulta para insertar en la base de datos
         const query = `
             INSERT INTO "Postulaciones" (
                 "fechaPostulacion", "nombreApellido", "nivelEducativo", cargo,
@@ -125,7 +142,6 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         `;
 
-        // Ejecución del query
         await pool.query(query, [
             fechaPostulacion,
             nombreApellido,
@@ -141,10 +157,9 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
             tipoDocumento,
             numeroDocumento,
             recomendado,
-            hojaVidaURL, // Guardar la URL del archivo en la base de datos
+            hojaVidaURL,
         ]);
 
-        // Respuesta al cliente
         res.status(200).json({
             success: true,
             message: "Formulario enviado exitosamente",
