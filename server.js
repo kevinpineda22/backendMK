@@ -81,49 +81,53 @@ app.get('/api/postulaciones', async (req, res) => {
 });
 
 // Endpoint para descargar archivos desde Supabase
-// Endpoint para descargar archivos desde Supabase
-app.get('/api/descargar/:filePath', async (req, res) => {
-    const { filePath } = req.params;
+app.get('/api/descargar/*', async (req, res) => {
+    const filePath = req.params[0]; // Captura todo después de "/api/descargar/"
+    console.log('filePath recibido:', filePath);
 
-    // Validación básica para asegurar que el filePath es válido
     if (!filePath || !filePath.startsWith('hojas-vida/')) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Ruta de archivo no válida o fuera del bucket permitido.' 
+        return res.status(400).json({
+            success: false,
+            message: 'Ruta de archivo no válida o fuera del bucket permitido.',
         });
     }
 
     try {
-        // Descarga del archivo desde Supabase
+        // Descargar el archivo desde Supabase
         const { data, error } = await supabase.storage.from('hojas-vida').download(filePath);
 
         if (error) {
-            console.error('Error al descargar el archivo:', error.message);
-            return res.status(400).json({ 
-                success: false, 
-                message: 'No se pudo descargar el archivo.', 
-                error: error.message 
+            console.error('Error al descargar el archivo desde Supabase:', error.message);
+            return res.status(400).json({
+                success: false,
+                message: 'No se pudo descargar el archivo.',
+                error: error.message,
             });
         }
 
-        // Configuración de encabezados para forzar la descarga del archivo
-        res.setHeader('Content-Type', data.type); // Tipo de contenido
+        console.log('Archivo descargado desde Supabase:', filePath);
+
+        // Configurar encabezados HTTP para la descarga
+        res.setHeader('Content-Type', 'application/pdf');
         res.setHeader(
-            'Content-Disposition', 
+            'Content-Disposition',
             `attachment; filename="${filePath.split('/').pop()}"`
         );
 
-        // Enviar el archivo al cliente
-        res.send(data);
+        // Enviar el archivo como un `Buffer`
+        const buffer = Buffer.from(await data.arrayBuffer());
+        res.end(buffer);
     } catch (err) {
-        console.error('Error durante la descarga:', err.message);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error interno del servidor.', 
-            error: err.message 
+        console.error('Error interno durante la descarga:', err.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor.',
+            error: err.message,
         });
     }
 });
+
+
 
 // Ruta POST para recibir datos del formulario
 app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
