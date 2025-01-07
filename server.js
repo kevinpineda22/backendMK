@@ -81,23 +81,47 @@ app.get('/api/postulaciones', async (req, res) => {
 });
 
 // Endpoint para descargar archivos desde Supabase
+// Endpoint para descargar archivos desde Supabase
 app.get('/api/descargar/:filePath', async (req, res) => {
     const { filePath } = req.params;
 
+    // Validación básica para asegurar que el filePath es válido
+    if (!filePath || !filePath.startsWith('hojas-vida/')) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Ruta de archivo no válida o fuera del bucket permitido.' 
+        });
+    }
+
     try {
+        // Descarga del archivo desde Supabase
         const { data, error } = await supabase.storage.from('hojas-vida').download(filePath);
 
         if (error) {
             console.error('Error al descargar el archivo:', error.message);
-            return res.status(400).json({ success: false, message: 'No se pudo descargar el archivo.' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No se pudo descargar el archivo.', 
+                error: error.message 
+            });
         }
 
-        res.setHeader('Content-Type', data.type);
-        res.setHeader('Content-Disposition', `attachment; filename="${filePath.split('/').pop()}"`);
+        // Configuración de encabezados para forzar la descarga del archivo
+        res.setHeader('Content-Type', data.type); // Tipo de contenido
+        res.setHeader(
+            'Content-Disposition', 
+            `attachment; filename="${filePath.split('/').pop()}"`
+        );
+
+        // Enviar el archivo al cliente
         res.send(data);
     } catch (err) {
         console.error('Error durante la descarga:', err.message);
-        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error interno del servidor.', 
+            error: err.message 
+        });
     }
 });
 
