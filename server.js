@@ -73,16 +73,23 @@ app.get('/api/postulaciones', async (req, res) => {
     try {
         const query = 'SELECT * FROM "Postulaciones"';
         const { rows } = await pool.query(query);
-        
+
         // Verificar si no se obtuvieron filas
         if (!rows || rows.length === 0) {
-            throw new Error("No se encontraron postulaciones.");
+            return res.status(404).json({
+                success: false,
+                message: 'No se encontraron postulaciones.',
+            });
         }
 
         res.status(200).json({ success: true, data: rows });
     } catch (err) {
         console.error("Error al obtener datos de la base de datos:", err.message);
-        res.status(500).json({ success: false, message: "Error al obtener datos", error: err.message });
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener datos',
+            error: err.message,
+        });
     }
 });
 
