@@ -53,10 +53,16 @@ app.get('/', (req, res) => {
 
 // ✅ Endpoint para obtener todas las postulaciones
 app.get('/api/postulaciones', async (req, res) => {
+    const { numeroDocumento } = req.query;
+
     try {
-        const { data, error } = await supabase
-            .from('Postulaciones')
-            .select('*');
+        let query = supabase.from('Postulaciones').select('*');
+
+        if (numeroDocumento) {
+            query = query.eq('numeroDocumento', numeroDocumento);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error("Error al obtener datos de Supabase:", error.message);
