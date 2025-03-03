@@ -9,10 +9,10 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Inicializar Supabase
+// Inicializar Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// ✅ Configuración de Multer para solo usar memoria
+// Configuración de Multer para usar memoria
 const storage = multer.memoryStorage();
 const upload = multer({
     storage,
@@ -26,7 +26,7 @@ const upload = multer({
     },
 });
 
-// ✅ Middleware
+// Middleware
 app.use(cors({
     origin: process.env.ALLOWED_ORIGIN || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -35,7 +35,7 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// ✅ Función para normalizar el nombre del archivo
+// Función para normalizar el nombre del archivo
 function normalizeFileName(fileName) {
     return fileName
         .normalize("NFD")
@@ -43,7 +43,7 @@ function normalizeFileName(fileName) {
         .replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-// ✅ Endpoint de prueba para verificar el estado del servidor
+// Endpoint de prueba para verificar el estado del servidor
 app.get('/', (req, res) => {
     res.status(200).json({
         success: true,
@@ -51,12 +51,17 @@ app.get('/', (req, res) => {
     });
 });
 
-// ✅ Endpoint para obtener todas las postulaciones
+// Endpoint para obtener postulaciones (con filtro por numeroDocumento)
 app.get('/api/postulaciones', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('Postulaciones')
-            .select('*');
+        const { numeroDocumento } = req.query; // Obtener el número de documento de la query
+        let query = supabase.from('Postulaciones').select('*');
+
+        if (numeroDocumento) {
+            query = query.eq('numeroDocumento', numeroDocumento); // Filtrar por numeroDocumento
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error("Error al obtener datos de Supabase:", error.message);
@@ -70,7 +75,7 @@ app.get('/api/postulaciones', async (req, res) => {
     }
 });
 
-// ✅ Endpoint para descargar archivos desde Supabase
+// Endpoint para descargar archivos desde Supabase
 app.get('/api/descargar/*', async (req, res) => {
     const filePath = req.params[0];
     console.log('filePath recibido:', filePath);
@@ -101,7 +106,7 @@ app.get('/api/descargar/*', async (req, res) => {
     }
 });
 
-// ✅ Ruta POST para recibir datos del formulario
+// Ruta POST para recibir datos del formulario (con validación de duplicados)
 app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
     try {
         const {
@@ -117,6 +122,23 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
             return res.status(400).json({ success: false, message: "La hoja de vida es obligatoria." });
         }
 
+        // Verificar si ya existe una postulación con el mismo numeroDocumento
+        const { data: existingData, error: checkError } = await supabase
+            .from('Postulaciones')
+            .select('id')
+            .eq('numeroDocumento', numeroDocumento)
+            .limit(1);
+
+        if (checkError) {
+            console.error("Error al verificar el documento:", checkError.message);
+            return res.status(500).json({ success: false, message: "Error al verificar el documento.", error: checkError.message });
+        }
+
+        if (existingData.length > 0) {
+            return res.status(400).json({ success: false, message: "El número de documento ya está registrado." });
+        }
+
+        // Si no hay duplicados, proceder con la subida del archivo
         const safeFileName = normalizeFileName(hojaVidaFile.originalname);
         const filePath = `hojas-vida/${Date.now()}-${safeFileName}`;
 
@@ -126,14 +148,20 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
 
         if (uploadError) {
             console.error("Error al subir el archivo a Supabase:", uploadError.message);
-            return res.status(500).json({ success: false, message: "Error al subir el archivo." });
+            return res.status(500).json({ success: false, message: "Error al subir el archivo.", error: uploadError.message });
         }
 
         const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/${uploadData.path}`;
 
+        // Insertar los datos en la tabla Postulaciones
         const { data, error } = await supabase
             .from('Postulaciones')
-            .insert([{ fechaPostulacion, nombreApellido, nivelEducativo, cargo, telefono, genero, Departamento, Ciudad, zonaResidencia, barrio, fechaNacimiento, tipoDocumento, numeroDocumento, recomendado, hojaVida: hojaVidaURL }]);
+            .insert([{
+                fechaPostulacion, nombreApellido, nivelEducativo, cargo,
+                telefono, genero, Departamento, Ciudad,
+                zonaResidencia, barrio, fechaNacimiento, tipoDocumento,
+                numeroDocumento, recomendado, hojaVida: hojaVidaURL
+            }]);
 
         if (error) {
             console.error("Error al insertar datos en Supabase:", error.message);
@@ -147,7 +175,7 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
     }
 });
 
-// ✅ Puerto del servidor
+// Puerto del servidor
 const PORT = process.env.PORT || 7777;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
