@@ -54,14 +54,9 @@ app.get('/', (req, res) => {
 // Endpoint para obtener postulaciones (con filtro por numeroDocumento)
 app.get('/api/postulaciones', async (req, res) => {
     try {
-        const { numeroDocumento } = req.query; // Obtener el número de documento de la query
-        let query = supabase.from('Postulaciones').select('*');
-
-        if (numeroDocumento) {
-            query = query.eq('numeroDocumento', numeroDocumento); // Filtrar por numeroDocumento
-        }
-
-        const { data, error } = await query;
+        const { data, error } = await supabase
+            .from('Postulaciones')
+            .select('*');
 
         if (error) {
             console.error("Error al obtener datos de Supabase:", error.message);
@@ -115,6 +110,24 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
             zonaResidencia, barrio, fechaNacimiento, tipoDocumento,
             numeroDocumento, recomendado
         } = req.body;
+
+        // ✅ Verificar si el documento ya existe en la base de datos
+        const { data: existingPostulacion, error: searchError } = await supabase
+            .from('Postulaciones')
+            .select('*')
+            .eq('numeroDocumento', numeroDocumento)
+            .single();
+
+        if (searchError && searchError.code !== 'PGRST116') {
+            throw new Error('Error al verificar la existencia del documento.');
+        }
+
+        if (existingPostulacion) {
+            return res.status(400).json({
+                success: false,
+                message: `El número de documento ${numeroDocumento} ya está registrado.`,
+            });
+        }
 
         const hojaVidaFile = req.file;
 
