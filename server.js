@@ -115,6 +115,46 @@ app.patch('/api/postulaciones/:id/check', async (req, res) => {
     }
 });
 
+// NUEVO: Endpoint para actualizar el campo observacion_BD en una postulación
+app.patch('/api/postulaciones/:id/observacion', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { observacion_BD } = req.body;
+
+        // Validación: el campo observacion_BD debe ser una cadena
+        if (typeof observacion_BD !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: "El campo observacion_BD debe ser un valor de texto.",
+            });
+        }
+
+        const { data, error } = await supabase
+            .from('Postulaciones')
+            .update({ observacion_BD })
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            console.error('Error al actualizar observacion_BD:', error.message);
+            return res.status(500).json({
+                success: false,
+                message: "Error al actualizar el campo observacion_BD.",
+                error: error.message,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Campo observacion_BD actualizado correctamente.",
+            data,
+        });
+    } catch (err) {
+        console.error('Error inesperado:', err.message);
+        res.status(500).json({ success: false, message: "Error inesperado", error: err.message });
+    }
+});
+
 // Descargar archivos
 app.get('/api/descargar/*', async (req, res) => {
     const filePath = req.params[0];
@@ -152,7 +192,7 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
             fechaPostulacion, nombreApellido, nivelEducativo, cargo,
             telefono, genero, Departamento, Ciudad,
             zonaResidencia, barrio, fechaNacimiento, tipoDocumento,
-            numeroDocumento, recomendado
+            numeroDocumento, recomendado, observacion_BD // Agregar observacion_BD
         } = req.body;
 
         const hojaVidaFile = req.file;
@@ -204,7 +244,8 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
                 telefono, genero, Departamento, Ciudad,
                 zonaResidencia, barrio, fechaNacimiento, tipoDocumento,
                 numeroDocumento, recomendado, hojaVida: hojaVidaURL,
-                check_BD: false
+                check_BD: false,
+                observacion_BD // Incluir observacion_BD en la inserción
             }])
             .select();
 
