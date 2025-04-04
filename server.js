@@ -29,7 +29,7 @@ const upload = multer({
 // Middleware
 app.use(cors({
     origin: process.env.ALLOWED_ORIGIN || '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     optionsSuccessStatus: 200,
 }));
 app.use(bodyParser.json());
@@ -71,6 +71,46 @@ app.get('/api/postulaciones', async (req, res) => {
         res.status(200).json({ success: true, data });
     } catch (err) {
         console.error("Error inesperado:", err.message);
+        res.status(500).json({ success: false, message: "Error inesperado", error: err.message });
+    }
+});
+
+// NUEVO: Endpoint para actualizar el campo check_BD en una postulación
+app.patch('/api/postulaciones/:id/check', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { check_BD } = req.body;
+
+        // Validación: el campo check_BD debe ser un booleano
+        if (typeof check_BD !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: "El campo check_BD debe ser un valor booleano.",
+            });
+        }
+
+        const { data, error } = await supabase
+            .from('Postulaciones')
+            .update({ check_BD })
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            console.error('Error al actualizar check_BD:', error.message);
+            return res.status(500).json({
+                success: false,
+                message: "Error al actualizar el campo check_BD.",
+                error: error.message,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Campo check_BD actualizado correctamente.",
+            data,
+        });
+    } catch (err) {
+        console.error('Error inesperado:', err.message);
         res.status(500).json({ success: false, message: "Error inesperado", error: err.message });
     }
 });
@@ -156,13 +196,15 @@ app.post('/enviar', upload.single('hojaVida'), async (req, res) => {
 
         const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/${uploadData.path}`;
 
+        // Se asigna el valor inicial de check_BD (false) al insertar la nueva postulación
         const { data, error } = await supabase
             .from('Postulaciones')
             .insert([{
                 fechaPostulacion, nombreApellido, nivelEducativo, cargo,
                 telefono, genero, Departamento, Ciudad,
                 zonaResidencia, barrio, fechaNacimiento, tipoDocumento,
-                numeroDocumento, recomendado, hojaVida: hojaVidaURL
+                numeroDocumento, recomendado, hojaVida: hojaVidaURL,
+                check_BD: false
             }])
             .select();
 
