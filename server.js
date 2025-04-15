@@ -505,6 +505,72 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
   }
 });
 
+app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
+    try {
+      const { postulacion_id, tipo, categoria } = req.body;
+      const archivo = req.file;
+  
+      if (!postulacion_id || !tipo || !archivo) {
+        return res.status(400).json({
+          success: false,
+          message: "Faltan campos requeridos: postulacion_id, tipo o archivo.",
+        });
+      }
+  
+      const safeFileName = normalizeFileName(archivo.originalname);
+      const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${safeFileName}`;
+  
+      // Subir a Supabase Storage (bucket: documentos)
+      const { data: storageData, error: uploadError } = await supabase.storage
+        .from("documentos")
+        .upload(filePath, archivo.buffer, {
+          contentType: archivo.mimetype,
+        });
+  
+      if (uploadError) {
+        console.error("Error al subir el archivo:", uploadError.message);
+        return res.status(500).json({
+          success: false,
+          message: "Error al subir el archivo.",
+          error: uploadError.message,
+        });
+      }
+  
+      const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${storageData.path}`;
+  
+      // Insertar registro en la tabla documentos_postulante
+      const { error: insertError } = await supabase.from("documentos_postulante").insert({
+        postulacion_id: parseInt(postulacion_id),
+        tipo,
+        categoria: categoria || "principal",
+        url: publicUrl,
+      });
+  
+      if (insertError) {
+        console.error("Error al guardar documento:", insertError.message);
+        return res.status(500).json({
+          success: false,
+          message: "Error al guardar el documento en la base de datos.",
+          error: insertError.message,
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: "Documento subido y registrado correctamente.",
+        url: publicUrl,
+      });
+    } catch (err) {
+      console.error("Error inesperado:", err.message);
+      res.status(500).json({
+        success: false,
+        message: "Error inesperado al procesar el documento.",
+        error: err.message,
+      });
+    }
+  });
+  
+
 // Exportar para Vercel
 export default app;
 
