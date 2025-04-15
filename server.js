@@ -184,6 +184,51 @@ app.patch("/api/postulaciones/:id/observacion", async (req, res) => {
   }
 });
 
+// NUEVO: Endpoint para actualizar el campo estado en una postulación
+app.patch("/api/postulaciones/:id/estado", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { estado } = req.body;
+  
+      // Validación: el campo estado debe ser texto no vacío
+      if (!estado || typeof estado !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "El campo 'estado' es obligatorio y debe ser texto.",
+        });
+      }
+  
+      const { data, error } = await supabase
+        .from("Postulaciones")
+        .update({ estado })
+        .eq("id", id)
+        .select();
+  
+      if (error) {
+        console.error("Error al actualizar estado:", error.message);
+        return res.status(500).json({
+          success: false,
+          message: "Error al actualizar el campo estado.",
+          error: error.message,
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: "Campo 'estado' actualizado correctamente.",
+        data,
+      });
+    } catch (err) {
+      console.error("Error inesperado:", err.message);
+      res.status(500).json({
+        success: false,
+        message: "Error inesperado al actualizar estado.",
+        error: err.message,
+      });
+    }
+  });
+  
+
 // Endpoint para obtener estadísticas de postulaciones
 app.get("/api/postulaciones/stats", async (req, res) => {
   try {
