@@ -15,53 +15,38 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
+// Configuración de Multer
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 600 * 1024 }, // 600KB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Solo se permiten archivos PDF."));
+    }
+  },
+});
+
+// Middleware
+app.use(
+  cors({
+    origin: process.env.ALLOWED_ORIGIN || "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    optionsSuccessStatus: 200,
+  })
+);
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Normalizar nombres de archivo
 function normalizeFileName(fileName) {
-    return fileName
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9.\-_]/g, "_")
-      .replace(/\s+/g, "_")
-      .substring(0, 100);
-  }
-  
-  // Tipos de archivos permitidos
-  const allowedMimeTypes = [
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "image/jpeg",
-    "image/png",
-  ];
-  
-  // Configuración de Multer
-  const storage = multer.memoryStorage();
-  const upload = multer({
-    storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-    fileFilter: (req, file, cb) => {
-      if (allowedMimeTypes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error("Solo se permiten archivos PDF, Word o imágenes (JPG, PNG)."));
-      }
-    },
-  });
-  
-  // Middleware CORS
-  app.use(
-    cors({
-      origin: [
-        "http://localhost:5174",            // Desarrollo local
-        "https://tudominio.com"             // Producción
-      ],
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-      credentials: true,
-      optionsSuccessStatus: 200,
-    })
-  );
-  app.use(bodyParser.json());
-  app.use(bodyParser.urlencoded({ extended: true }));
+  return fileName
+    .normalize("NFD")
+    .replace(/[̀-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+}
 
 // Ruta raíz
 app.get("/", (req, res) => {
@@ -535,6 +520,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
       const safeFileName = normalizeFileName(archivo.originalname);
       const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${safeFileName}`;
   
+      // Subir archivo a Supabase Storage en la subcarpeta documentos/
       const { data: storageData, error: uploadError } = await supabase.storage
         .from("documentos")
         .upload(filePath, archivo.buffer, {
@@ -550,6 +536,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
         });
       }
   
+      // Obtener el enlace público correcto usando getPublicUrl()
       const { data: urlData } = supabase
         .storage
         .from("documentos")
@@ -557,12 +544,15 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
   
       const publicUrl = urlData?.publicUrl;
   
-      const { error: insertError } = await supabase.from("documentos_postulante").insert({
-        postulacion_id: parseInt(postulacion_id),
-        tipo,
-        categoria: categoria || "principal",
-        url: publicUrl,
-      });
+      // Guardar el documento en la tabla documentos_postulante
+      const { error: insertError } = await supabase
+        .from("documentos_postulante")
+        .insert({
+          postulacion_id: parseInt(postulacion_id),
+          tipo,
+          categoria: categoria || "principal",
+          url: publicUrl,
+        });
   
       if (insertError) {
         console.error("Error al guardar documento:", insertError.message);
@@ -588,16 +578,6 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
     }
   });
   
-  // Middleware para errores de multer (tipo de archivo incorrecto, etc.)
-  app.use((err, req, res, next) => {
-    if (err instanceof multer.MulterError || err.message.includes("Solo se permiten archivos")) {
-      return res.status(400).json({
-        success: false,
-        message: err.message || "Error al procesar el archivo.",
-      });
-    }
-    next(err);
-  });
 
 // Exportar para Vercel
 export default app;
