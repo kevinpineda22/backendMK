@@ -15,6 +15,14 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
+function normalizeFileName(fileName) {
+    return fileName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .replace(/\s+/g, "_");
+  }
+
 // Configuración de Multer
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -506,77 +514,83 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
 });
 
 app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
-    try {
-      const { postulacion_id, tipo, categoria } = req.body;
-      const archivo = req.file;
-  
-      if (!postulacion_id || !tipo || !archivo) {
-        return res.status(400).json({
-          success: false,
-          message: "Faltan campos requeridos: postulacion_id, tipo o archivo.",
-        });
-      }
-  
-      const safeFileName = normalizeFileName(archivo.originalname);
-      const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${safeFileName}`;
-  
-      // Subir archivo a Supabase Storage en la subcarpeta documentos/
-      const { data: storageData, error: uploadError } = await supabase.storage
-        .from("documentos")
-        .upload(filePath, archivo.buffer, {
-          contentType: archivo.mimetype,
-        });
-  
-      if (uploadError) {
-        console.error("Error al subir el archivo:", uploadError.message);
-        return res.status(500).json({
-          success: false,
-          message: "Error al subir el archivo.",
-          error: uploadError.message,
-        });
-      }
-  
-      // Obtener el enlace público correcto usando getPublicUrl()
-      const { data: urlData } = supabase
-        .storage
-        .from("documentos")
-        .getPublicUrl(filePath);
-  
-      const publicUrl = urlData?.publicUrl;
-  
-      // Guardar el documento en la tabla documentos_postulante
-      const { error: insertError } = await supabase
-        .from("documentos_postulante")
-        .insert({
-          postulacion_id: parseInt(postulacion_id),
-          tipo,
-          categoria: categoria || "principal",
-          url: publicUrl,
-        });
-  
-      if (insertError) {
-        console.error("Error al guardar documento:", insertError.message);
-        return res.status(500).json({
-          success: false,
-          message: "Error al guardar el documento en la base de datos.",
-          error: insertError.message,
-        });
-      }
-  
-      res.status(200).json({
-        success: true,
-        message: "Documento subido y registrado correctamente.",
-        url: publicUrl,
-      });
-    } catch (err) {
-      console.error("Error inesperado:", err.message);
-      res.status(500).json({
+  try {
+    const { postulacion_id, tipo, categoria } = req.body;
+    const archivo = req.file;
+
+    if (!postulacion_id || !tipo || !archivo) {
+      return res.status(400).json({
         success: false,
-        message: "Error inesperado al procesar el documento.",
-        error: err.message,
+        message: "Faltan campos requeridos: postulacion_id, tipo o archivo.",
       });
     }
-  });
+
+    const safeFileName = normalizeFileName(archivo.originalname);
+    const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${safeFileName}`;
+
+    const { data: storageData, error: uploadError } = await supabase.storage
+      .from("documentos")
+      .upload(filePath, archivo.buffer, {
+        contentType: archivo.mimetype,
+      });
+
+    if (uploadError) {
+      console.error("Error al subir el archivo:", uploadError.message);
+      return res.status(500).json({
+        success: false,
+        message: "Error al subir el archivo.",
+        error: uploadError.message,
+      });
+    }
+
+    const { data: urlData } = supabase
+      .storage
+      .from("documentos")
+      .getPublicUrl(filePath);
+
+    const publicUrl = urlData?.publicUrl;
+
+    const { error: insertError } = await supabase.from("documentos_postulante").insert({
+      postulacion_id: parseInt(postulacion_id),
+      tipo,
+      categoria: categoria || "principal",
+      url: publicUrl,
+    });
+
+    if (insertError) {
+      console.error("Error al guardar documento:", insertError.message);
+      return res.status(500).json({
+        success: false,
+        message: "Error al guardar el documento en la base de datos.",
+        error: insertError.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Documento subido y registrado correctamente.",
+      url: publicUrl,
+    });
+  } catch (err) {
+    console.error("Error inesperado:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Error inesperado al procesar el documento.",
+      error: err.message,
+    });
+  }
+});
+
+// Middleware para errores de multer (tipo de archivo incorrecto, tamaño, etc.)
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError || err.message.includes("Solo se permiten archivos PDF")) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || "Error al procesar el archivo.",
+    });
+  }
+  next(err);
+});
   
 
 // Exportar para Vercel
