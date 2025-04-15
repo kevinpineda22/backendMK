@@ -518,8 +518,8 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
       }
   
       const safeFileName = normalizeFileName(archivo.originalname);
-      const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${safeFileName}`;
-  
+      const filePath = `${postulacion_id}_${tipo}_${Date.now()}_${safeFileName}`;
+
       // Subir a Supabase Storage (bucket: documentos)
       const { data: storageData, error: uploadError } = await supabase.storage
         .from("documentos")
