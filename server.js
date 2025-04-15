@@ -520,7 +520,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
       const safeFileName = normalizeFileName(archivo.originalname);
       const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${safeFileName}`;
   
-      // Subir a Supabase Storage (bucket: documentos)
+      // Subir archivo a Supabase Storage en la subcarpeta documentos/
       const { data: storageData, error: uploadError } = await supabase.storage
         .from("documentos")
         .upload(filePath, archivo.buffer, {
@@ -536,15 +536,23 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
         });
       }
   
-      const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${storageData.path}`;
+      // Obtener el enlace público correcto usando getPublicUrl()
+      const { data: urlData } = supabase
+        .storage
+        .from("documentos")
+        .getPublicUrl(filePath);
   
-      // Insertar registro en la tabla documentos_postulante
-      const { error: insertError } = await supabase.from("documentos_postulante").insert({
-        postulacion_id: parseInt(postulacion_id),
-        tipo,
-        categoria: categoria || "principal",
-        url: publicUrl,
-      });
+      const publicUrl = urlData?.publicUrl;
+  
+      // Guardar el documento en la tabla documentos_postulante
+      const { error: insertError } = await supabase
+        .from("documentos_postulante")
+        .insert({
+          postulacion_id: parseInt(postulacion_id),
+          tipo,
+          categoria: categoria || "principal",
+          url: publicUrl,
+        });
   
       if (insertError) {
         console.error("Error al guardar documento:", insertError.message);
