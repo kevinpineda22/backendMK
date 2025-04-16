@@ -88,7 +88,7 @@ app.patch("/api/postulaciones/:id/check", async (req, res) => {
     const { data, error } = await supabase
       .from("Postulaciones")
       .update({ check_BD })
-      .eq("id", id)
+      .eq("id", parseInt(id))
       .select();
 
     if (error) {
@@ -131,7 +131,7 @@ app.patch("/api/postulaciones/:id/observacion", async (req, res) => {
     const { data, error } = await supabase
       .from("Postulaciones")
       .update({ observacion_BD })
-      .eq("id", id)
+      .eq("id", parseInt(id))
       .select();
 
     if (error) {
@@ -174,7 +174,7 @@ app.patch("/api/postulaciones/:id/estado", async (req, res) => {
     const { data, error } = await supabase
       .from("Postulaciones")
       .update({ estado })
-      .eq("id", id)
+      .eq("id", parseInt(id))
       .select();
 
     if (error) {
@@ -288,7 +288,7 @@ app.get("/api/descargar/*", async (req, res) => {
   const filePath = req.params[0];
   console.log("filePath recibido:", filePath);
 
-  if (!filePath || !filePath.startsWith("hojas-vida/") && !filePath.startsWith("documentos/")) {
+  if (!filePath || (!filePath.startsWith("hojas-vida/") && !filePath.startsWith("documentos/"))) {
     return res.status(400).json({
       success: false,
       message: "Ruta de archivo no válida.",
@@ -465,7 +465,31 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
       });
     }
 
-    const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${archivo.originalname}`;
+    // Convertir postulacion_id a entero
+    const parsedPostulacionId = parseInt(postulacion_id);
+    if (isNaN(parsedPostulacionId)) {
+      return res.status(400).json({
+        success: false,
+        message: "El postulacion_id debe ser un número entero válido.",
+      });
+    }
+
+    // Validar que postulacion_id existe
+    const { data: postulacion, error: postulacionError } = await supabase
+      .from("Postulaciones")
+      .select("id")
+      .eq("id", parsedPostulacionId)
+      .single();
+
+    if (postulacionError || !postulacion) {
+      console.error("Error al verificar postulacion_id:", postulacionError?.message || "No encontrado");
+      return res.status(400).json({
+        success: false,
+        message: "El postulacion_id proporcionado no es válido o no existe.",
+      });
+    }
+
+    const filePath = `documentos/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
 
     const { data: storageData, error: uploadError } = await supabase.storage
       .from("documentos")
@@ -489,11 +513,11 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
     const { error: insertError } = await supabase
       .from("documentos_postulante")
       .insert({
-        postulacion_id,
+        postulacion_id: parsedPostulacionId,
         tipo,
         categoria: categoria || "principal",
         url: publicUrl,
-        beneficiarioId: beneficiarioId || null,
+        beneficiarioid: beneficiarioId || null,
       });
 
     if (insertError) {
@@ -533,6 +557,15 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
       });
     }
 
+    // Convertir postulacion_id a entero
+    const parsedPostulacionId = parseInt(postulacion_id);
+    if (isNaN(parsedPostulacionId)) {
+      return res.status(400).json({
+        success: false,
+        message: "El postulacion_id debe ser un número entero válido.",
+      });
+    }
+
     // Convertir a arrays si no lo son
     const tiposArray = Array.isArray(tipos) ? tipos : [tipos];
     const beneficiarioIdsArray = Array.isArray(beneficiarioIds) ? beneficiarioIds : [beneficiarioIds];
@@ -553,7 +586,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
     const { data: postulacion, error: postulacionError } = await supabase
       .from("Postulaciones")
       .select("id")
-      .eq("id", postulacion_id)
+      .eq("id", parsedPostulacionId)
       .single();
 
     if (postulacionError || !postulacion) {
@@ -569,7 +602,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
     const { data: existingDocs, error: docsError } = await supabase
       .from("documentos_postulante")
       .select("tipo")
-      .eq("postulacion_id", postulacion_id);
+      .eq("postulacion_id", parsedPostulacionId);
 
     if (docsError) {
       console.error("Error al obtener documentos existentes:", docsError.message);
@@ -600,7 +633,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
       const beneficiarioId = beneficiarioIdsArray[i] === "" ? null : beneficiarioIdsArray[i];
       const categoria = categoriasArray[i] || "principal";
 
-      const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${archivo.originalname}`;
+      const filePath = `documentos/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
 
       const { data: storageData, error: uploadError } = await supabase.storage
         .from("documentos")
@@ -622,11 +655,11 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
       const { data: insertedDoc, error: insertError } = await supabase
         .from("documentos_postulante")
         .insert({
-          postulacion_id,
+          postulacion_id: parsedPostulacionId,
           tipo,
           categoria,
           url: publicUrl,
-          beneficiarioId,
+          beneficiarioid: beneficiarioId,
         })
         .select()
         .single();
@@ -640,7 +673,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
         });
       }
 
-      uploadedDocuments.push({ id: insertedDoc.id, tipo, url: publicUrl, beneficiarioId });
+      uploadedDocuments.push({ id: insertedDoc.id, tipo, url: publicUrl, beneficiarioid: beneficiarioId });
     }
 
     res.status(200).json({
@@ -667,7 +700,7 @@ app.delete("/api/documentos/:id", async (req, res) => {
     const { data: documento, error: fetchError } = await supabase
       .from("documentos_postulante")
       .select("url")
-      .eq("id", id)
+      .eq("id", parseInt(id))
       .single();
 
     if (fetchError || !documento) {
@@ -698,7 +731,7 @@ app.delete("/api/documentos/:id", async (req, res) => {
     const { error: deleteError } = await supabase
       .from("documentos_postulante")
       .delete()
-      .eq("id", id);
+      .eq("id", parseInt(id));
 
     if (deleteError) {
       console.error("Error al eliminar documento:", deleteError.message);
