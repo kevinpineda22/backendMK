@@ -286,31 +286,35 @@ app.get("/api/postulaciones/details", async (req, res) => {
 // Descargar archivos
 app.get("/api/descargar/*", async (req, res) => {
   const filePath = req.params[0];
-  console.log("filePath recibido:", filePath);
+  console.log("Solicitud de descarga recibida - filePath:", filePath);
 
   if (!filePath || (!filePath.startsWith("hojas-vida/") && !filePath.startsWith("documentos/"))) {
+    console.error("Ruta de archivo no válida:", filePath);
     return res.status(400).json({
       success: false,
-      message: "Ruta de archivo no válida.",
+      message: "Ruta de archivo no válida. Debe comenzar con 'hojas-vida/' o 'documentos/'.",
     });
   }
 
   try {
     const bucket = filePath.startsWith("hojas-vida/") ? "hojas-vida" : "documentos";
     const path = filePath.replace(/^(hojas-vida|documentos)\//, "");
+    console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
 
     const { data, error } = await supabase.storage
       .from(bucket)
       .download(path);
 
     if (error) {
-      console.error("Error al descargar:", error.message);
+      console.error("Error al descargar desde Supabase:", error.message, { bucket, path });
       return res.status(400).json({
         success: false,
-        message: "No se pudo descargar el archivo.",
+        message: "No se pudo descargar el archivo. Es posible que no exista o no sea accesible.",
         error: error.message,
       });
     }
+
+    console.log("Archivo descargado exitosamente:", path);
 
     res.setHeader("Content-Type", "application/octet-stream");
     res.setHeader(
@@ -320,10 +324,10 @@ app.get("/api/descargar/*", async (req, res) => {
     const buffer = Buffer.from(await data.arrayBuffer());
     res.end(buffer);
   } catch (err) {
-    console.error("Error interno:", err.message);
+    console.error("Error interno en /api/descargar:", err.message, { filePath });
     res.status(500).json({
       success: false,
-      message: "Error interno del servidor.",
+      message: "Error interno del servidor al procesar la descarga.",
       error: err.message,
     });
   }
