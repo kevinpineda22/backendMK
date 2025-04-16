@@ -302,8 +302,11 @@ app.get("/api/descargar/*", async (req, res) => {
 
   try {
     const bucket = filePath.startsWith("hojas-vida/") ? "hojas-vida" : "documentos";
-    // Eliminar completamente el prefijo del bucket para obtener el nombre del archivo
-    const path = filePath.replace(/^hojas-vida\/|documentos\//, "");
+    // Mantener la subcarpeta 'hojas-vida/' para el bucket hojas-vida
+    let path = filePath.replace(/^documentos\//, "");
+    if (bucket === "hojas-vida") {
+      path = `hojas-vida/${filePath.replace(/^hojas-vida\//, "")}`;
+    }
     console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
