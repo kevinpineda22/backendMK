@@ -489,7 +489,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
     const { error: insertError } = await supabase
       .from("documentos_postulante")
       .insert({
-        postulacion_id: parseInt(postulacion_id),
+        postulacion_id,
         tipo,
         categoria: categoria || "principal",
         url: publicUrl,
@@ -523,32 +523,62 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
 // Subir múltiples documentos
 app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) => {
   try {
-    const { postulacion_id, categoria, tipos, beneficiarioIds } = req.body;
+    const { postulacion_id, tipos, beneficiarioIds, categorias } = req.body;
     const archivos = req.files;
 
-    if (!postulacion_id || !archivos || !tipos) {
+    if (!postulacion_id || !archivos || !tipos || !categorias) {
       return res.status(400).json({
         success: false,
-        message: "Faltan campos requeridos: postulacion_id, archivos o tipos.",
+        message: "Faltan campos requeridos: postulacion_id, archivos, tipos o categorias.",
       });
     }
 
+    // Convertir a arrays si no lo son
     const tiposArray = Array.isArray(tipos) ? tipos : [tipos];
     const beneficiarioIdsArray = Array.isArray(beneficiarioIds) ? beneficiarioIds : [beneficiarioIds];
+    const categoriasArray = Array.isArray(categorias) ? categorias : [categorias];
 
-    if (archivos.length !== tiposArray.length || archivos.length !== beneficiarioIdsArray.length) {
+    if (
+      archivos.length !== tiposArray.length ||
+      archivos.length !== beneficiarioIdsArray.length ||
+      archivos.length !== categoriasArray.length
+    ) {
       return res.status(400).json({
         success: false,
-        message: "El número de archivos no coincide con el número de tipos o beneficiarioIds.",
+        message: "El número de archivos no coincide con el número de tipos, beneficiarioIds o categorias.",
+      });
+    }
+
+    // Validar que postulacion_id existe
+    const { data: postulacion, error: postulacionError } = await supabase
+      .from("Postulaciones")
+      .select("id")
+      .eq("id", postulacion_id)
+      .single();
+
+    if (postulacionError || !postulacion) {
+      console.error("Error al verificar postulacion_id:", postulacionError?.message || "No encontrado");
+      return res.status(400).json({
+        success: false,
+        message: "El postulacion_id proporcionado no es válido o no existe.",
       });
     }
 
     // Validar documentos obligatorios
     const mandatoryTypes = ["hoja_vida", "antecedentes_judiciales"];
-    const { data: existingDocs } = await supabase
+    const { data: existingDocs, error: docsError } = await supabase
       .from("documentos_postulante")
       .select("tipo")
       .eq("postulacion_id", postulacion_id);
+
+    if (docsError) {
+      console.error("Error al obtener documentos existentes:", docsError.message);
+      return res.status(500).json({
+        success: false,
+        message: "Error al verificar documentos existentes.",
+        error: docsError.message,
+      });
+    }
 
     const uploadedTypes = existingDocs.map((doc) => doc.tipo);
     const newTypes = tiposArray;
@@ -567,7 +597,8 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
     for (let i = 0; i < archivos.length; i++) {
       const archivo = archivos[i];
       const tipo = tiposArray[i];
-      const beneficiarioId = beneficiarioIdsArray[i] || null;
+      const beneficiarioId = beneficiarioIdsArray[i] === "" ? null : beneficiarioIdsArray[i];
+      const categoria = categoriasArray[i] || "principal";
 
       const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${archivo.originalname}`;
 
@@ -586,18 +617,19 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
         });
       }
 
-      const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(filePath);
-      const publicUrl = urlData?.publicUrl;
+      const { publicUrl } = supabase.storage.from("documentos").getPublicUrl(filePath).data;
 
-      const { error: insertError } = await supabase
+      const { data: insertedDoc, error: insertError } = await supabase
         .from("documentos_postulante")
         .insert({
-          postulacion_id: parseInt(postulacion_id),
+          postulacion_id,
           tipo,
-          categoria: categoria || "principal",
+          categoria,
           url: publicUrl,
           beneficiarioId,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) {
         console.error(`Error al guardar documento ${archivo.originalname}:`, insertError.message);
@@ -608,7 +640,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
         });
       }
 
-      uploadedDocuments.push({ tipo, url: publicUrl, beneficiarioId });
+      uploadedDocuments.push({ id: insertedDoc.id, tipo, url: publicUrl, beneficiarioId });
     }
 
     res.status(200).json({
@@ -617,7 +649,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
       data: uploadedDocuments,
     });
   } catch (err) {
-    console.error("Error inesperado:", err.message);
+    console.error("Error inesperado en /api/documentos/multiple:", err);
     res.status(500).json({
       success: false,
       message: "Error inesperado al procesar los documentos.",
