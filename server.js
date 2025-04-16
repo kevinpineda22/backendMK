@@ -288,29 +288,38 @@ app.get("/api/descargar/*", async (req, res) => {
   const filePath = req.params[0];
   console.log("Solicitud de descarga recibida - filePath:", filePath);
 
-  if (!filePath || (!filePath.startsWith("hojas-vida/") && !filePath.startsWith("documentos/"))) {
+  if (
+    !filePath ||
+    (!filePath.startsWith("hojas-vida/") && !filePath.startsWith("documentos/"))
+  ) {
     console.error("Ruta de archivo no válida:", filePath);
     return res.status(400).json({
       success: false,
-      message: "Ruta de archivo no válida. Debe comenzar con 'hojas-vida/' o 'documentos/'.",
+      message:
+        "Ruta de archivo no válida. Debe comenzar con 'hojas-vida/' o 'documentos/'.",
     });
   }
 
   try {
-    const bucket = filePath.startsWith("hojas-vida/") ? "hojas-vida" : "documentos";
+    const bucket = filePath.startsWith("hojas-vida/")
+      ? "hojas-vida"
+      : "documentos";
     const path = filePath.replace(/^(hojas-vida|documentos)\//, "");
     console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
 
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .download(path);
+    const { data, error } = await supabase.storage.from(bucket).download(path);
 
     if (error) {
-      console.error("Error al descargar desde Supabase:", error.message, { bucket, path });
+      console.error("Error al descargar desde Supabase:", error.message, {
+        bucket,
+        path,
+      });
       return res.status(400).json({
         success: false,
-        message: "No se pudo descargar el archivo. Es posible que no exista o no sea accesible.",
+        message:
+          "No se pudo descargar el archivo. Es posible que no exista o no sea accesible.",
         error: error.message,
+        details: { bucket, path }, // Add detailed error context
       });
     }
 
@@ -324,11 +333,14 @@ app.get("/api/descargar/*", async (req, res) => {
     const buffer = Buffer.from(await data.arrayBuffer());
     res.end(buffer);
   } catch (err) {
-    console.error("Error interno en /api/descargar:", err.message, { filePath });
+    console.error("Error interno en /api/descargar:", err.message, {
+      filePath,
+    });
     res.status(500).json({
       success: false,
       message: "Error interno del servidor al procesar la descarga.",
       error: err.message,
+      details: { filePath }, // Add detailed error context
     });
   }
 });
@@ -357,7 +369,9 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
     const hojaVidaFile = req.file;
 
     if (!hojaVidaFile) {
-      return res.status(400).json({ success: false, message: "La hoja de vida es obligatoria." });
+      return res
+        .status(400)
+        .json({ success: false, message: "La hoja de vida es obligatoria." });
     }
     if (!numeroDocumento) {
       return res.status(400).json({
@@ -405,7 +419,7 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/${uploadData.path}`;
+    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${filePath}`;
 
     const { data, error } = await supabase
       .from("Postulaciones")
@@ -486,14 +500,19 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
       .single();
 
     if (postulacionError || !postulacion) {
-      console.error("Error al verificar postulacion_id:", postulacionError?.message || "No encontrado");
+      console.error(
+        "Error al verificar postulacion_id:",
+        postulacionError?.message || "No encontrado"
+      );
       return res.status(400).json({
         success: false,
         message: "El postulacion_id proporcionado no es válido o no existe.",
       });
     }
 
-    const filePath = `documentos/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
+    const filePath = `documentos/${parsedPostulacionId}_${tipo}_${Date.now()}_${
+      archivo.originalname
+    }`;
 
     const { data: storageData, error: uploadError } = await supabase.storage
       .from("documentos")
@@ -510,9 +529,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
       });
     }
 
-    const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(filePath);
-
-    const publicUrl = urlData?.publicUrl;
+    const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/documentos/${filePath}`;
 
     const { error: insertError } = await supabase
       .from("documentos_postulante")
@@ -549,151 +566,185 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
 });
 
 // Subir múltiples documentos
-app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) => {
-  try {
-    const { postulacion_id, tipos, beneficiarioIds, categorias } = req.body;
-    const archivos = req.files;
+app.post(
+  "/api/documentos/multiple",
+  upload.array("archivos"),
+  async (req, res) => {
+    try {
+      const { postulacion_id, tipos, beneficiarioIds, categorias } = req.body;
+      const archivos = req.files;
 
-    if (!postulacion_id || !archivos || !tipos || !categorias) {
-      return res.status(400).json({
-        success: false,
-        message: "Faltan campos requeridos: postulacion_id, archivos, tipos o categorias.",
-      });
-    }
-
-    // Convertir postulacion_id a entero
-    const parsedPostulacionId = parseInt(postulacion_id);
-    if (isNaN(parsedPostulacionId)) {
-      return res.status(400).json({
-        success: false,
-        message: "El postulacion_id debe ser un número entero válido.",
-      });
-    }
-
-    // Convertir a arrays si no lo son
-    const tiposArray = Array.isArray(tipos) ? tipos : [tipos];
-    const beneficiarioIdsArray = Array.isArray(beneficiarioIds) ? beneficiarioIds : [beneficiarioIds];
-    const categoriasArray = Array.isArray(categorias) ? categorias : [categorias];
-
-    if (
-      archivos.length !== tiposArray.length ||
-      archivos.length !== beneficiarioIdsArray.length ||
-      archivos.length !== categoriasArray.length
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "El número de archivos no coincide con el número de tipos, beneficiarioIds o categorias.",
-      });
-    }
-
-    // Validar que postulacion_id existe
-    const { data: postulacion, error: postulacionError } = await supabase
-      .from("Postulaciones")
-      .select("id")
-      .eq("id", parsedPostulacionId)
-      .single();
-
-    if (postulacionError || !postulacion) {
-      console.error("Error al verificar postulacion_id:", postulacionError?.message || "No encontrado");
-      return res.status(400).json({
-        success: false,
-        message: "El postulacion_id proporcionado no es válido o no existe.",
-      });
-    }
-
-    // Validar documentos obligatorios
-    const mandatoryTypes = ["hoja_vida", "antecedentes_judiciales"];
-    const { data: existingDocs, error: docsError } = await supabase
-      .from("documentos_postulante")
-      .select("tipo")
-      .eq("postulacion_id", parsedPostulacionId);
-
-    if (docsError) {
-      console.error("Error al obtener documentos existentes:", docsError.message);
-      return res.status(500).json({
-        success: false,
-        message: "Error al verificar documentos existentes.",
-        error: docsError.message,
-      });
-    }
-
-    const uploadedTypes = existingDocs.map((doc) => doc.tipo);
-    const newTypes = tiposArray;
-    const allTypes = [...new Set([...uploadedTypes, ...newTypes])];
-
-    const missingMandatory = mandatoryTypes.filter((tipo) => !allTypes.includes(tipo));
-    if (missingMandatory.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Faltan documentos obligatorios: ${missingMandatory.join(", ")}.`,
-      });
-    }
-
-    const uploadedDocuments = [];
-
-    for (let i = 0; i < archivos.length; i++) {
-      const archivo = archivos[i];
-      const tipo = tiposArray[i];
-      const beneficiarioId = beneficiarioIdsArray[i] === "" ? null : beneficiarioIdsArray[i];
-      const categoria = categoriasArray[i] || "principal";
-
-      const filePath = `documentos/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
-
-      const { data: storageData, error: uploadError } = await supabase.storage
-        .from("documentos")
-        .upload(filePath, archivo.buffer, {
-          contentType: archivo.mimetype,
-        });
-
-      if (uploadError) {
-        console.error(`Error al subir archivo ${archivo.originalname}:`, uploadError.message);
-        return res.status(500).json({
+      if (!postulacion_id || !archivos || !tipos || !categorias) {
+        return res.status(400).json({
           success: false,
-          message: `Error al subir el archivo ${archivo.originalname}.`,
-          error: uploadError.message,
+          message:
+            "Faltan campos requeridos: postulacion_id, archivos, tipos o categorias.",
         });
       }
 
-      const { publicUrl } = supabase.storage.from("documentos").getPublicUrl(filePath).data;
+      // Convertir postulacion_id a entero
+      const parsedPostulacionId = parseInt(postulacion_id);
+      if (isNaN(parsedPostulacionId)) {
+        return res.status(400).json({
+          success: false,
+          message: "El postulacion_id debe ser un número entero válido.",
+        });
+      }
 
-      const { data: insertedDoc, error: insertError } = await supabase
-        .from("documentos_postulante")
-        .insert({
-          postulacion_id: parsedPostulacionId,
-          tipo,
-          categoria,
-          url: publicUrl,
-          beneficiarioid: beneficiarioId,
-        })
-        .select()
+      // Convertir a arrays si no lo son
+      const tiposArray = Array.isArray(tipos) ? tipos : [tipos];
+      const beneficiarioIdsArray = Array.isArray(beneficiarioIds)
+        ? beneficiarioIds
+        : [beneficiarioIds];
+      const categoriasArray = Array.isArray(categorias)
+        ? categorias
+        : [categorias];
+
+      if (
+        archivos.length !== tiposArray.length ||
+        archivos.length !== beneficiarioIdsArray.length ||
+        archivos.length !== categoriasArray.length
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "El número de archivos no coincide con el número de tipos, beneficiarioIds o categorias.",
+        });
+      }
+
+      // Validar que postulacion_id existe
+      const { data: postulacion, error: postulacionError } = await supabase
+        .from("Postulaciones")
+        .select("id")
+        .eq("id", parsedPostulacionId)
         .single();
 
-      if (insertError) {
-        console.error(`Error al guardar documento ${archivo.originalname}:`, insertError.message);
-        return res.status(500).json({
+      if (postulacionError || !postulacion) {
+        console.error(
+          "Error al verificar postulacion_id:",
+          postulacionError?.message || "No encontrado"
+        );
+        return res.status(400).json({
           success: false,
-          message: `Error al guardar el documento ${archivo.originalname} en la base de datos.`,
-          error: insertError.message,
+          message: "El postulacion_id proporcionado no es válido o no existe.",
         });
       }
 
-      uploadedDocuments.push({ id: insertedDoc.id, tipo, url: publicUrl, beneficiarioid: beneficiarioId });
-    }
+      // Validar documentos obligatorios
+      const mandatoryTypes = ["hoja_vida", "antecedentes_judiciales"];
+      const { data: existingDocs, error: docsError } = await supabase
+        .from("documentos_postulante")
+        .select("tipo")
+        .eq("postulacion_id", parsedPostulacionId);
 
-    res.status(200).json({
-      success: true,
-      message: `${uploadedDocuments.length} documento(s) subido(s) y registrado(s) correctamente.`,
-      data: uploadedDocuments,
-    });
-  } catch (err) {
-    console.error("Error inesperado en /api/documentos/multiple:", err);
-    res.status(500).json({
-      success: false,
-      message: "Error inesperado al procesar los documentos.",
-      error: err.message,
-    });
+      if (docsError) {
+        console.error(
+          "Error al obtener documentos existentes:",
+          docsError.message
+        );
+        return res.status(500).json({
+          success: false,
+          message: "Error al verificar documentos existentes.",
+          error: docsError.message,
+        });
+      }
+
+      const uploadedTypes = existingDocs.map((doc) => doc.tipo);
+      const newTypes = tiposArray;
+      const allTypes = [...new Set([...uploadedTypes, ...newTypes])];
+
+      const missingMandatory = mandatoryTypes.filter(
+        (tipo) => !allTypes.includes(tipo)
+      );
+      if (missingMandatory.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Faltan documentos obligatorios: ${missingMandatory.join(
+            ", "
+          )}.`,
+        });
+      }
+
+      const uploadedDocuments = [];
+
+      for (let i = 0; i < archivos.length; i++) {
+        const archivo = archivos[i];
+        const tipo = tiposArray[i];
+        const beneficiarioId =
+          beneficiarioIdsArray[i] === "" ? null : beneficiarioIdsArray[i];
+        const categoria = categoriasArray[i] || "principal";
+
+        const filePath = `documentos/${parsedPostulacionId}_${tipo}_${Date.now()}_${
+          archivo.originalname
+        }`;
+
+        const { data: storageData, error: uploadError } = await supabase.storage
+          .from("documentos")
+          .upload(filePath, archivo.buffer, {
+            contentType: archivo.mimetype,
+          });
+
+        if (uploadError) {
+          console.error(
+            `Error al subir archivo ${archivo.originalname}:`,
+            uploadError.message
+          );
+          return res.status(500).json({
+            success: false,
+            message: `Error al subir el archivo ${archivo.originalname}.`,
+            error: uploadError.message,
+          });
+        }
+
+        const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/documentos/${filePath}`;
+
+        const { data: insertedDoc, error: insertError } = await supabase
+          .from("documentos_postulante")
+          .insert({
+            postulacion_id: parsedPostulacionId,
+            tipo,
+            categoria,
+            url: publicUrl,
+            beneficiarioid: beneficiarioId,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error(
+            `Error al guardar documento ${archivo.originalname}:`,
+            insertError.message
+          );
+          return res.status(500).json({
+            success: false,
+            message: `Error al guardar el documento ${archivo.originalname} en la base de datos.`,
+            error: insertError.message,
+          });
+        }
+
+        uploadedDocuments.push({
+          id: insertedDoc.id,
+          tipo,
+          url: publicUrl,
+          beneficiarioid: beneficiarioId,
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `${uploadedDocuments.length} documento(s) subido(s) y registrado(s) correctamente.`,
+        data: uploadedDocuments,
+      });
+    } catch (err) {
+      console.error("Error inesperado en /api/documentos/multiple:", err);
+      res.status(500).json({
+        success: false,
+        message: "Error inesperado al procesar los documentos.",
+        error: err.message,
+      });
+    }
   }
-});
+);
 
 // Eliminar un documento
 app.delete("/api/documentos/:id", async (req, res) => {
@@ -723,7 +774,10 @@ app.delete("/api/documentos/:id", async (req, res) => {
       .remove([filePath]);
 
     if (storageError) {
-      console.error("Error al eliminar archivo del almacenamiento:", storageError.message);
+      console.error(
+        "Error al eliminar archivo del almacenamiento:",
+        storageError.message
+      );
       return res.status(500).json({
         success: false,
         message: "Error al eliminar el archivo del almacenamiento.",
