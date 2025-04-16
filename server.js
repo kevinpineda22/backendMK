@@ -816,6 +816,50 @@ app.delete("/api/documentos/:id", async (req, res) => {
   }
 });
 
+app.post("/api/notificaciones", async (req, res) => {
+  try {
+    const { mensaje, rol_destino, postulacion_id = null } = req.body;
+
+    if (!mensaje || !rol_destino) {
+      return res.status(400).json({
+        success: false,
+        message: "Se requiere 'mensaje' y 'rol_destino'.",
+      });
+    }
+
+    const { error } = await supabase.from("notificaciones").insert([
+      {
+        mensaje,
+        rol_destino,
+        postulacion_id,
+        leido: false,
+      },
+    ]);
+
+    if (error) {
+      console.error("Error al insertar notificación:", error.message);
+      return res.status(500).json({
+        success: false,
+        message: "Error al guardar la notificación.",
+        error: error.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Notificación enviada exitosamente.",
+    });
+  } catch (err) {
+    console.error("Error inesperado:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Error inesperado al enviar notificación.",
+      error: err.message,
+    });
+  }
+});
+
+
 // Exportar para Vercel
 export default app;
 
