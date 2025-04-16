@@ -419,7 +419,8 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/${filePath}`;
+    // Ajustar la URL para reflejar la subcarpeta dentro del bucket
+    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${filePath}`;
 
     const { data, error } = await supabase
       .from("Postulaciones")
