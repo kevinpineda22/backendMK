@@ -19,7 +19,6 @@ const supabase = createClient(
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  // Sin restricciones de tipo de archivo o tamaño
 });
 
 // Middleware
@@ -453,10 +452,10 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
   }
 });
 
-// Subir un solo documento (actualizado para aceptar cualquier tipo de archivo)
+// Subir un solo documento
 app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
   try {
-    const { postulacion_id, tipo, categoria } = req.body;
+    const { postulacion_id, tipo, categoria, beneficiarioId } = req.body;
     const archivo = req.file;
 
     if (!postulacion_id || !tipo || !archivo) {
@@ -494,6 +493,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
         tipo,
         categoria: categoria || "principal",
         url: publicUrl,
+        beneficiarioId: beneficiarioId || null,
       });
 
     if (insertError) {
@@ -523,7 +523,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
 // Subir múltiples documentos
 app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) => {
   try {
-    const { postulacion_id, categoria, tipos } = req.body;
+    const { postulacion_id, categoria, tipos, beneficiarioIds } = req.body;
     const archivos = req.files;
 
     if (!postulacion_id || !archivos || !tipos) {
@@ -534,10 +534,31 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
     }
 
     const tiposArray = Array.isArray(tipos) ? tipos : [tipos];
-    if (archivos.length !== tiposArray.length) {
+    const beneficiarioIdsArray = Array.isArray(beneficiarioIds) ? beneficiarioIds : [beneficiarioIds];
+
+    if (archivos.length !== tiposArray.length || archivos.length !== beneficiarioIdsArray.length) {
       return res.status(400).json({
         success: false,
-        message: "El número de archivos no coincide con el número de tipos.",
+        message: "El número de archivos no coincide con el número de tipos o beneficiarioIds.",
+      });
+    }
+
+    // Validar documentos obligatorios
+    const mandatoryTypes = ["hoja_vida", "antecedentes_judiciales"];
+    const { data: existingDocs } = await supabase
+      .from("documentos_postulante")
+      .select("tipo")
+      .eq("postulacion_id", postulacion_id);
+
+    const uploadedTypes = existingDocs.map((doc) => doc.tipo);
+    const newTypes = tiposArray;
+    const allTypes = [...new Set([...uploadedTypes, ...newTypes])];
+
+    const missingMandatory = mandatoryTypes.filter((tipo) => !allTypes.includes(tipo));
+    if (missingMandatory.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Faltan documentos obligatorios: ${missingMandatory.join(", ")}.`,
       });
     }
 
@@ -546,6 +567,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
     for (let i = 0; i < archivos.length; i++) {
       const archivo = archivos[i];
       const tipo = tiposArray[i];
+      const beneficiarioId = beneficiarioIdsArray[i] || null;
 
       const filePath = `documentos/${postulacion_id}_${tipo}_${Date.now()}_${archivo.originalname}`;
 
@@ -574,6 +596,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
           tipo,
           categoria: categoria || "principal",
           url: publicUrl,
+          beneficiarioId,
         });
 
       if (insertError) {
@@ -585,7 +608,7 @@ app.post("/api/documentos/multiple", upload.array("archivos"), async (req, res) 
         });
       }
 
-      uploadedDocuments.push({ tipo, url: publicUrl });
+      uploadedDocuments.push({ tipo, url: publicUrl, beneficiarioId });
     }
 
     res.status(200).json({
