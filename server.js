@@ -301,10 +301,9 @@ app.get("/api/descargar/*", async (req, res) => {
   }
 
   try {
-    const bucket = filePath.startsWith("hojas-vida/")
-      ? "hojas-vida"
-      : "documentos";
-    const path = filePath.replace(/^(hojas-vida|documentos)\//, "");
+    const bucket = filePath.startsWith("hojas-vida/") ? "hojas-vida" : "documentos";
+    // Eliminar completamente el prefijo del bucket para obtener el nombre del archivo
+    const path = filePath.replace(/^hojas-vida\/|documentos\//, "");
     console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
@@ -314,12 +313,11 @@ app.get("/api/descargar/*", async (req, res) => {
         bucket,
         path,
       });
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
-        message:
-          "No se pudo descargar el archivo. Es posible que no exista o no sea accesible.",
+        message: "Archivo no encontrado en el bucket.",
         error: error.message,
-        details: { bucket, path }, // Add detailed error context
+        details: { bucket, path },
       });
     }
 
@@ -340,7 +338,7 @@ app.get("/api/descargar/*", async (req, res) => {
       success: false,
       message: "Error interno del servidor al procesar la descarga.",
       error: err.message,
-      details: { filePath }, // Add detailed error context
+      details: { filePath },
     });
   }
 });
