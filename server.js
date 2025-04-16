@@ -419,7 +419,7 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${filePath}`;
+    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/${filePath}`;
 
     const { data, error } = await supabase
       .from("Postulaciones")
