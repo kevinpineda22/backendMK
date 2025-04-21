@@ -534,14 +534,15 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
     const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/documentos/${filePath}`;
 
     const { error: insertError } = await supabase
-      .from("documentos_postulante")
-      .insert({
-        postulacion_id: parsedPostulacionId,
-        tipo,
-        categoria: categoria || "principal",
-        url: publicUrl,
-        beneficiarioid: beneficiarioId || null,
-      });
+    .from("documentos_postulante")
+    .insert({
+      postulacion_id: parsedPostulacionId,
+      tipo,
+      categoria: beneficiarioId ? "beneficiario" : "principal",
+      url: publicUrl,
+      beneficiarioid: beneficiarioId || null,
+    });
+  
 
     if (insertError) {
       console.error("Error al guardar documento:", insertError.message);
