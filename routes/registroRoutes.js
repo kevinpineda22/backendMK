@@ -12,6 +12,7 @@ import {
   subirDocumento,
   subirDocumentosMultiples,
   eliminarDocumento,
+  sendEmail, // Añadir el nuevo controlador
   upload,
 } from "../controllers/registroController.js";
 
@@ -38,5 +39,8 @@ router.post("/enviar", upload.single("hojaVida"), enviarFormulario);
 router.post("/api/documentos", upload.single("archivo"), subirDocumento);
 router.post("/api/documentos/multiple", upload.array("archivos"), subirDocumentosMultiples);
 router.delete("/api/documentos/:id", eliminarDocumento);
+
+// Nueva ruta para enviar correos
+router.post("/api/send-email", sendEmail);
 
 export default router;

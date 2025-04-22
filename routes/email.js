@@ -1,11 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const sgMail = require('@sendgrid/mail');
+import sgMail from '@sendgrid/mail';
 
 // Configurar SendGrid con la clave API
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-router.post('/send-email', async (req, res) => {
+export const sendEmail = async (req, res) => {
   try {
     const { to, subject, message, postulacionId } = req.body;
 
@@ -16,9 +14,9 @@ router.post('/send-email', async (req, res) => {
 
     // Configurar el correo
     const msg = {
-      to: to, // Array: ['juanmerkahorro@gmail.com', 'johanmerkahorro777@gmail.com']
+      to, // Array: ['juanmerkahorro@gmail.com', 'johanmerkahorro777@gmail.com']
       from: 'gastosmerkahorro@gmail.com', // Cambia por tu correo verificado en SendGrid
-      subject: subject,
+      subject,
       text: message,
       html: `<p>${message}</p><p>ID de Postulación: ${postulacionId}</p>`,
     };
@@ -31,6 +29,4 @@ router.post('/send-email', async (req, res) => {
     console.error('Error al enviar correo:', error);
     res.status(500).json({ error: error.message });
   }
-});
-
-module.exports = router;
+};
