@@ -12,8 +12,8 @@ import {
   subirDocumento,
   subirDocumentosMultiples,
   eliminarDocumento,
-  sendEmail, // Añadir el nuevo controlador
   upload,
+  sendEmail
 } from "../controllers/registroController.js";
 
 const router = Router();
