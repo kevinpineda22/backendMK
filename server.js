@@ -302,11 +302,8 @@ app.get("/api/descargar/*", async (req, res) => {
 
   try {
     const bucket = filePath.startsWith("hojas-vida/") ? "hojas-vida" : "documentos";
-    // Normalizar la ruta eliminando todos los prefijos 'hojas-vida/' o 'documentos/'
-    let path = filePath;
-    while (path.startsWith("hojas-vida/") || path.startsWith("documentos/")) {
-      path = path.replace(/^(hojas-vida|documentos)\//, "");
-    }
+    // Eliminar el prefijo 'hojas-vida/' o 'documentos/' para obtener la ruta relativa
+    const path = filePath.replace(/^(hojas-vida|documentos)\//, "");
     console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
