@@ -17,7 +17,7 @@ router.post('/send-email', async (req, res) => {
     // Configurar el correo
     const msg = {
       to: to, // Array: ['juanmerkahorro@gmail.com', 'johanmerkahorro777@gmail.com']
-      from: 'no-reply@tuempresa.com', // Cambia por tu correo verificado en SendGrid
+      from: 'gastosmerkahorro@gmail.com', // Cambia por tu correo verificado en SendGrid
       subject: subject,
       text: message,
       html: `<p>${message}</p><p>ID de Postulación: ${postulacionId}</p>`,
