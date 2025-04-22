@@ -301,9 +301,20 @@ app.get("/api/descargar/*", async (req, res) => {
   }
 
   try {
-    const bucket = filePath.startsWith("hojas-vida/") ? "hojas-vida" : "documentos";
-    // Eliminar el prefijo 'hojas-vida/' o 'documentos/' para obtener la ruta relativa
-    const path = filePath.replace(/^(hojas-vida|documentos)\//, "");
+    let bucket;
+    let path;
+
+    if (filePath.startsWith("hojas-vida/")) {
+      bucket = "hojas-vida";
+      // Manejar tanto prefijo simple como doble
+      path = filePath.startsWith("hojas-vida/hojas-vida/")
+        ? filePath.replace("hojas-vida/hojas-vida/", "")
+        : filePath.replace("hojas-vida/", "");
+    } else {
+      bucket = "documentos";
+      path = filePath.replace("documentos/", "");
+    }
+
     console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
@@ -400,11 +411,7 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    // Sanitizar el nombre del archivo
-    let fileName = hojaVidaFile.originalname
-      .replace(/[^a-zA-Z0-9._-]/g, "_") // Reemplazar caracteres no válidos
-      .replace(/\.pdf\.pdf$/, ".pdf"); // Corregir doble extensión
-    const filePath = `hojas-vida/${Date.now()}-${fileName}`;
+    const filePath = `hojas-vida/${Date.now()}-${hojaVidaFile.originalname}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("hojas-vida")
@@ -421,6 +428,7 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
+    // Ajustar la URL para reflejar la subcarpeta dentro del bucket
     const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${filePath}`;
 
     const { data, error } = await supabase
@@ -538,7 +546,7 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
       .insert({
         postulacion_id: parsedPostulacionId,
         tipo,
-        categoria: beneficiarioId ? "beneficiario" : "principal",
+        categoria: categoria || "principal",
         url: publicUrl,
         beneficiarioid: beneficiarioId || null,
       });
@@ -745,7 +753,8 @@ app.post(
         error: err.message,
       });
     }
-});
+  }
+);
 
 // Eliminar un documento
 app.delete("/api/documentos/:id", async (req, res) => {
@@ -810,49 +819,6 @@ app.delete("/api/documentos/:id", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error inesperado al eliminar el documento.",
-      error: err.message,
-    });
-  }
-});
-
-app.post("/api/notificaciones", async (req, res) => {
-  try {
-    const { mensaje, rol_destino, postulacion_id = null } = req.body;
-
-    if (!mensaje || !rol_destino) {
-      return res.status(400).json({
-        success: false,
-        message: "Se requiere 'mensaje' y 'rol_destino'.",
-      });
-    }
-
-    const { error } = await supabase.from("notificaciones").insert([
-      {
-        mensaje,
-        rol_destino,
-        postulacion_id,
-        leido: false,
-      },
-    ]);
-
-    if (error) {
-      console.error("Error al insertar notificación:", error.message);
-      return res.status(500).json({
-        success: false,
-        message: "Error al guardar la notificación.",
-        error: error.message,
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Notificación enviada exitosamente.",
-    });
-  } catch (err) {
-    console.error("Error inesperado:", err.message);
-    res.status(500).json({
-      success: false,
-      message: "Error inesperado al enviar notificación.",
       error: err.message,
     });
   }
