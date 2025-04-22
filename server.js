@@ -306,16 +306,19 @@ app.get("/api/descargar/*", async (req, res) => {
 
     if (filePath.startsWith("hojas-vida/")) {
       bucket = "hojas-vida";
-      // Manejar tanto prefijo simple como doble
-      path = filePath.startsWith("hojas-vida/hojas-vida/")
-        ? filePath.replace("hojas-vida/hojas-vida/", "")
-        : filePath.replace("hojas-vida/", "");
+      // Siempre asumir que el archivo está en la subcarpeta hojas-vida/
+      // Eliminar hojas-vida/ o hojas-vida/hojas-vida/ y agregar hojas-vida/
+      path = `hojas-vida/${
+        filePath.startsWith("hojas-vida/hojas-vida/")
+          ? filePath.replace("hojas-vida/hojas-vida/", "")
+          : filePath.replace("hojas-vida/", "")
+      }`;
     } else {
       bucket = "documentos";
       path = filePath.replace("documentos/", "");
     }
 
-    console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
+    console.log(`Intentando descargar - Bucket: ${bucket}, Path: ${path}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
 
@@ -323,12 +326,13 @@ app.get("/api/descargar/*", async (req, res) => {
       console.error("Error al descargar desde Supabase:", error.message, {
         bucket,
         path,
+        filePath,
       });
       return res.status(404).json({
         success: false,
         message: "Archivo no encontrado en el bucket.",
         error: error.message,
-        details: { bucket, path },
+        details: { bucket, path, filePath },
       });
     }
 
@@ -411,7 +415,13 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    const filePath = `hojas-vida/${Date.now()}-${hojaVidaFile.originalname}`;
+    // Sanitizar el nombre del archivo
+    let fileName = hojaVidaFile.originalname
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .replace(/\.pdf\.pdf$/, ".pdf");
+    // Siempre subir a la subcarpeta hojas-vida/
+    const timestamp = Date.now();
+    const filePath = `hojas-vida/${timestamp}-${fileName}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("hojas-vida")
@@ -428,8 +438,10 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    // Ajustar la URL para reflejar la subcarpeta dentro del bucket
-    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${filePath}`;
+    // Generar URL con prefijo simple, reflejando solo el nombre del archivo
+    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${timestamp}-${fileName}`;
+
+    console.log("URL generada para hojaVida:", hojaVidaURL);
 
     const { data, error } = await supabase
       .from("Postulaciones")
