@@ -302,11 +302,8 @@ app.get("/api/descargar/*", async (req, res) => {
 
   try {
     const bucket = filePath.startsWith("hojas-vida/") ? "hojas-vida" : "documentos";
-    // Mantener la subcarpeta 'hojas-vida/' para el bucket hojas-vida
-    let path = filePath.replace(/^documentos\//, "");
-    if (bucket === "hojas-vida") {
-      path = `hojas-vida/${filePath.replace(/^hojas-vida\//, "")}`;
-    }
+    // Eliminar el prefijo 'hojas-vida/' o 'documentos/' para obtener la ruta relativa
+    const path = filePath.replace(/^(hojas-vida|documentos)\//, "");
     console.log(`Descargando desde bucket: ${bucket}, path: ${path}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
@@ -403,7 +400,11 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    const filePath = `hojas-vida/${Date.now()}-${hojaVidaFile.originalname}`;
+    // Sanitizar el nombre del archivo
+    let fileName = hojaVidaFile.originalname
+      .replace(/[^a-zA-Z0-9._-]/g, "_") // Reemplazar caracteres no válidos
+      .replace(/\.pdf\.pdf$/, ".pdf"); // Corregir doble extensión
+    const filePath = `hojas-vida/${Date.now()}-${fileName}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("hojas-vida")
@@ -420,7 +421,6 @@ app.post("/enviar", upload.single("hojaVida"), async (req, res) => {
       });
     }
 
-    // Ajustar la URL para reflejar la subcarpeta dentro del bucket
     const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${filePath}`;
 
     const { data, error } = await supabase
@@ -534,15 +534,14 @@ app.post("/api/documentos", upload.single("archivo"), async (req, res) => {
     const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/documentos/${filePath}`;
 
     const { error: insertError } = await supabase
-    .from("documentos_postulante")
-    .insert({
-      postulacion_id: parsedPostulacionId,
-      tipo,
-      categoria: beneficiarioId ? "beneficiario" : "principal",
-      url: publicUrl,
-      beneficiarioid: beneficiarioId || null,
-    });
-  
+      .from("documentos_postulante")
+      .insert({
+        postulacion_id: parsedPostulacionId,
+        tipo,
+        categoria: beneficiarioId ? "beneficiario" : "principal",
+        url: publicUrl,
+        beneficiarioid: beneficiarioId || null,
+      });
 
     if (insertError) {
       console.error("Error al guardar documento:", insertError.message);
@@ -746,8 +745,7 @@ app.post(
         error: err.message,
       });
     }
-  }
-);
+});
 
 // Eliminar un documento
 app.delete("/api/documentos/:id", async (req, res) => {
@@ -859,7 +857,6 @@ app.post("/api/notificaciones", async (req, res) => {
     });
   }
 });
-
 
 // Exportar para Vercel
 export default app;
