@@ -381,7 +381,7 @@ export const enviarFormulario = async (req, res) => {
 // Subir un solo documento
 export const subirDocumento = async (req, res) => {
   try {
-    const { postulacion_id, tipo, categoria, beneficiarioId } = req.body;
+    const { postulacion_id, tipo, categoria, beneficiarioId, subcarpeta } = req.body;
     const archivo = req.file;
 
     if (!postulacion_id || !tipo || !archivo) {
@@ -414,7 +414,9 @@ export const subirDocumento = async (req, res) => {
       );
     }
 
-    const filePath = `documentos/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
+    // Construir la ruta del archivo usando la subcarpeta si se proporciona
+    const basePath = subcarpeta ? `documentos/${subcarpeta}` : "documentos";
+    const filePath = `${basePath}/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
 
     const { data: storageData, error: uploadError } = await supabase.storage
       .from("documentos")
@@ -426,7 +428,7 @@ export const subirDocumento = async (req, res) => {
       return handleError(res, "Error al subir el archivo", uploadError);
     }
 
-    const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/documentos/${filePath}`;
+    const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${filePath}`;
 
     const { error: insertError } = await supabase
       .from("documentos_postulante")
@@ -633,7 +635,6 @@ export const eliminarDocumento = async (req, res) => {
 
 // Exportar multer para usarlo en las rutas
 export { upload };
-
 
 export const sendEmail = async (req, res) => {
   try {
