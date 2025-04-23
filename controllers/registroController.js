@@ -384,16 +384,6 @@ export const subirDocumento = async (req, res) => {
     const { postulacion_id, tipo, categoria, beneficiarioId, subcarpeta } = req.body;
     const archivo = req.file;
 
-    // Depuración: Verificar qué se recibe en el backend
-    console.log("Datos recibidos en subirDocumento:", {
-      postulacion_id,
-      tipo,
-      categoria,
-      beneficiarioId,
-      subcarpeta,
-      archivo: archivo ? archivo.originalname : "No archivo",
-    });
-
     if (!postulacion_id || !tipo || !archivo) {
       return res.status(400).json({
         success: false,
@@ -427,7 +417,6 @@ export const subirDocumento = async (req, res) => {
     // Construir la ruta del archivo usando la subcarpeta si se proporciona
     const basePath = subcarpeta ? `documentos/${subcarpeta}` : "documentos";
     const filePath = `${basePath}/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
-    console.log("Ruta construida para subir el archivo:", filePath);
 
     const { data: storageData, error: uploadError } = await supabase.storage
       .from("documentos")
@@ -440,7 +429,6 @@ export const subirDocumento = async (req, res) => {
     }
 
     const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/${filePath}`;
-    console.log("URL pública generada:", publicUrl);
 
     const { error: insertError } = await supabase
       .from("documentos_postulante")
