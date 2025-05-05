@@ -11,11 +11,14 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGIN || "*",
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     optionsSuccessStatus: 200,
   })
 );
+
+app.options('*', cors()); // Responder preflight
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
