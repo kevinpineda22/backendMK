@@ -34,8 +34,10 @@ router.get("/api/postulaciones/details", getDetails);
 router.get("/api/descargar/*", descargarArchivo);
 
 // Enviar formulario
+
 router.post("/enviar", upload.single("hojaVida"), enviarFormulario);
 router.post("/historial", registrarHistorial);
+router.post("/postulaciones/:id/estado-con-historial", actualizarEstadoConHistorial);
 
 // Rutas de documentos
 router.post("/api/documentos", upload.single("archivo"), subirDocumento);
