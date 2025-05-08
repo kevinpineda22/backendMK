@@ -27,7 +27,7 @@ router.get("/", getRoot);
 router.get("/api/postulaciones", getPostulaciones);
 router.patch("/api/postulaciones/:id/check", updateCheckBD);
 router.patch("/api/postulaciones/:id/observacion", updateObservacionBD);
-router.patch("/api/postulaciones/:id/estado", updateEstado);
+
 router.get("/api/postulaciones/stats", getStats);
 router.get("/api/postulaciones/details", getDetails);
 
