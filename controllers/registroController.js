@@ -117,7 +117,7 @@ export const updateObservacionBD = async (req, res) => {
 export const updateEstado = async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado } = req.body;
+    const { estado, ejecutado_por = "Sistema" } = req.body;
 
     if (!estado || typeof estado !== "string") {
       return res.status(400).json({
@@ -136,6 +136,18 @@ export const updateEstado = async (req, res) => {
       return handleError(res, "Error al actualizar estado", error);
     }
 
+    // Insertar en historial_postulacion
+    const { error: historialError } = await supabase.from("historial_postulacion").insert({
+      postulacion_id: parseInt(id),
+      accion: estado,
+      ejecutado_por,
+      observacion: `Cambio de estado a '${estado}' desde el backend.`
+    });
+
+    if (historialError) {
+      console.error("Error al guardar en historial_postulacion:", historialError.message);
+    }
+
     res.status(200).json({
       success: true,
       message: "Campo 'estado' actualizado correctamente.",
@@ -145,6 +157,7 @@ export const updateEstado = async (req, res) => {
     handleError(res, "Error inesperado al actualizar estado", err);
   }
 };
+
 
 // Obtener estadísticas
 export const getStats = async (req, res) => {
