@@ -15,7 +15,7 @@ import {
   upload,
   sendEmail,
   registrarHistorial,
-  actualizarEstadoConHistorial,
+  
 } from "../controllers/registroController.js";
 
 const router = Router();
@@ -27,7 +27,7 @@ router.get("/", getRoot);
 router.get("/api/postulaciones", getPostulaciones);
 router.patch("/api/postulaciones/:id/check", updateCheckBD);
 router.patch("/api/postulaciones/:id/observacion", updateObservacionBD);
-router.patch("/api/postulaciones/:id/estado", updateEstado);
+
 router.get("/api/postulaciones/stats", getStats);
 router.get("/api/postulaciones/details", getDetails);
 
@@ -39,7 +39,7 @@ router.get("/api/descargar/*", descargarArchivo);
 router.post("/enviar", upload.single("hojaVida"), enviarFormulario);
 router.post("/historial", registrarHistorial);
 
-router.put("/estado/:id", actualizarEstadoConHistorial);
+router.put("/api/postulaciones/:id/estado", updateEstado);
 
 // Rutas de documentos
 router.post("/api/documentos", upload.single("archivo"), subirDocumento);

@@ -737,36 +737,3 @@ export const registrarHistorial = async (req, res) => {
     });
   }
 };
-
-export const actualizarEstadoConHistorial = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado, ejecutado_por } = req.body;
-
-    if (!estado || !ejecutado_por) {
-      return res.status(400).json({ error: "Faltan campos requeridos" });
-    }
-
-    const { error: updateError } = await supabase
-      .from("Postulaciones")
-      .update({ estado })
-      .eq("id", id);
-
-    if (updateError) {
-      return res.status(500).json({ error: "Error al actualizar estado" });
-    }
-
-    const observacion = `Cambio de estado a '${estado}' desde el frontend`;
-    const { error: insertError } = await supabase
-      .from("historial_postulacion")
-      .insert([{ postulacion_id: parseInt(id), accion: estado, ejecutado_por, observacion }]);
-
-    if (insertError) {
-      return res.status(500).json({ error: "Error al insertar historial" });
-    }
-
-    res.status(200).json({ success: true, message: "Estado y historial actualizados" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
