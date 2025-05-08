@@ -126,19 +126,7 @@ export const updateEstado = async (req, res) => {
       });
     }
 
-    // Consultar nombre desde la tabla Login
-    let nombreResponsable = ejecutado_por;
-    const { data: usuario, error: errorUsuario } = await supabase
-      .from("Login")
-      .select("nombre")
-      .eq("correo", ejecutado_por)
-      .single();
-
-    if (!errorUsuario && usuario?.nombre) {
-      nombreResponsable = usuario.nombre;
-    }
-
-    // Actualizar estado
+    // Actualizar estado en la tabla Postulaciones
     const { data, error } = await supabase
       .from("Postulaciones")
       .update({ estado })
@@ -149,15 +137,26 @@ export const updateEstado = async (req, res) => {
       return handleError(res, "Error al actualizar estado", error);
     }
 
-    // Insertar en historial con nombre del responsable
+    // Obtener nombre del responsable desde la tabla Login
+    const { data: usuario, error: userError } = await supabase
+      .from("Login")
+      .select("nombre")
+      .eq("correo", ejecutado_por)
+      .maybeSingle();
+
+    const nombreResponsable = usuario?.nombre || ejecutado_por;
+
+    // Insertar en historial_postulacion con nombre
     const { error: historialError } = await supabase
       .from("historial_postulacion")
-      .insert([{
-        postulacion_id: parseInt(id),
-        accion: estado,
-        ejecutado_por,
-        observacion: `Cambio de estado a '${estado}' realizado por ${nombreResponsable}.`
-      }]);
+      .insert([
+        {
+          postulacion_id: parseInt(id),
+          accion: estado,
+          ejecutado_por,
+          observacion: `Cambio de estado a '${estado}' realizado por ${nombreResponsable}.`,
+        },
+      ]);
 
     if (historialError) {
       console.error("Error al guardar en historial_postulacion:", historialError.message);
@@ -172,6 +171,7 @@ export const updateEstado = async (req, res) => {
     handleError(res, "Error inesperado al actualizar estado", err);
   }
 };
+
 
 
 // Obtener estadísticas
