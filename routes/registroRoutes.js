@@ -15,6 +15,7 @@ import {
   upload,
   sendEmail,
   registrarHistorial,
+  actualizarEstadoConHistorial,
 } from "../controllers/registroController.js";
 
 const router = Router();
