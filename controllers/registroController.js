@@ -136,13 +136,18 @@ export const updateEstado = async (req, res) => {
       return handleError(res, "Error al actualizar estado", error);
     }
 
-    // Insertar en historial_postulacion
-    const { error: historialError } = await supabase.from("historial_postulacion").insert({
-      postulacion_id: parseInt(id),
+    // Insertar en historial_postulacion con protección de tipo
+    const parsedId = parseInt(id);
+    const historialEntry = {
+      postulacion_id: parsedId,
       accion: estado,
       ejecutado_por,
-      observacion: `Cambio de estado a '${estado}' desde el backend.`
-    });
+      observacion: `Cambio de estado a '${estado}' desde el backend.`,
+    };
+
+    const { error: historialError } = await supabase
+      .from("historial_postulacion")
+      .insert([historialEntry]);
 
     if (historialError) {
       console.error("Error al guardar en historial_postulacion:", historialError.message);
