@@ -13,7 +13,8 @@ import {
   subirDocumentosMultiples,
   eliminarDocumento,
   upload,
-  sendEmail
+  sendEmail,
+  registrarHistorial,
 } from "../controllers/registroController.js";
 
 const router = Router();
@@ -34,6 +35,7 @@ router.get("/api/descargar/*", descargarArchivo);
 
 // Enviar formulario
 router.post("/enviar", upload.single("hojaVida"), enviarFormulario);
+router.post("/historial", registrarHistorial);
 
 // Rutas de documentos
 router.post("/api/documentos", upload.single("archivo"), subirDocumento);

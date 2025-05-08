@@ -689,3 +689,36 @@ export const sendEmail = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const registrarHistorial = async (req, res) => {
+  try {
+    const { postulacion_id, accion, ejecutado_por, observacion } = req.body;
+
+    if (!postulacion_id || !accion || !ejecutado_por) {
+      return res.status(400).json({
+        success: false,
+        message: "Faltan campos requeridos: postulacion_id, accion, ejecutado_por.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("historial_postulacion")
+      .insert([{ postulacion_id, accion, ejecutado_por, observacion }]);
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Error al registrar historial.",
+        error: error.message,
+      });
+    }
+
+    res.status(200).json({ success: true, message: "Historial registrado.", data });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Error interno al registrar historial.",
+      error: err.message,
+    });
+  }
+};
