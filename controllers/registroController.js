@@ -1,6 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import supabase from "../config/supabaseClient.js";
 import multer from "multer";
+import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
 
 // Configuración de Multer para documentos
 const storage = multer.memoryStorage();
@@ -138,7 +139,7 @@ export const updateEstado = async (req, res) => {
     }
 
     // Obtener nombre del responsable desde la tabla Login
-    const { data: usuario, error: userError } = await supabase
+    const { data: usuario } = await supabase
       .from("Login")
       .select("nombre")
       .eq("correo", ejecutado_por)
@@ -146,7 +147,7 @@ export const updateEstado = async (req, res) => {
 
     const nombreResponsable = usuario?.nombre || ejecutado_por;
 
-    // Insertar en historial_postulacion con nombre
+    // Insertar en historial_postulacion con hora de Colombia
     const { error: historialError } = await supabase
       .from("historial_postulacion")
       .insert([
@@ -155,6 +156,7 @@ export const updateEstado = async (req, res) => {
           accion: estado,
           ejecutado_por,
           observacion: `Cambio de estado a '${estado}' realizado por ${nombreResponsable}.`,
+          creado_en: getCurrentColombiaTimeISO(), // ✅ Hora de Colombia
         },
       ]);
 
@@ -687,7 +689,15 @@ export const registrarHistorial = async (req, res) => {
 
     const { data, error } = await supabase
       .from("historial_postulacion")
-      .insert([{ postulacion_id, accion, ejecutado_por, observacion }]);
+      .insert([
+        {
+          postulacion_id,
+          accion,
+          ejecutado_por,
+          observacion,
+          creado_en: getCurrentColombiaTimeISO(), // ✅ Hora de Colombia
+        },
+      ]);
 
     if (error) {
       return res.status(500).json({
