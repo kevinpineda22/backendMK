@@ -301,35 +301,27 @@ export const enviarFormulario = async (req, res) => {
     const {
       fechaPostulacion,
       nombreApellido,
+      empresaPostula,
       nivelEducativo,
       cargo,
       telefono,
+      correo,
       genero,
-      Departamento,
       Ciudad,
-      zonaResidencia,
-      barrio,
       fechaNacimiento,
       tipoDocumento,
       numeroDocumento,
-      recomendado,
-      observacion_BD,
     } = req.body;
 
-    const hojaVidaFile = req.file;
-
-    if (!hojaVidaFile) {
-      return res
-        .status(400)
-        .json({ success: false, message: "La hoja de vida es obligatoria." });
-    }
-    if (!numeroDocumento) {
+    // Validar campos obligatorios
+    if (!nombreApellido || !numeroDocumento || !tipoDocumento) {
       return res.status(400).json({
         success: false,
-        message: "El número de documento es obligatorio.",
+        message: "Los campos nombreApellido, numeroDocumento y tipoDocumento son obligatorios.",
       });
     }
 
+    // Verificar si el número de documento ya está registrado
     const { data: existingData, error: checkError } = await supabase
       .from("Postulaciones")
       .select("id")
@@ -347,47 +339,24 @@ export const enviarFormulario = async (req, res) => {
       });
     }
 
-    // Sanitizar el nombre del archivo
-    let fileName = hojaVidaFile.originalname
-      .replace(/[^a-zA-Z0-9._-]/g, "_")
-      .replace(/\.pdf\.pdf$/, ".pdf");
-    const timestamp = Date.now();
-    const filePath = `hojas-vida/${timestamp}-${fileName}`;
-
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("hojas-vida")
-      .upload(filePath, hojaVidaFile.buffer, {
-        contentType: hojaVidaFile.mimetype,
-      });
-
-    if (uploadError) {
-      return handleError(res, "Error al subir el archivo", uploadError);
-    }
-
-    const hojaVidaURL = `${process.env.SUPABASE_URL}/storage/v1/object/public/hojas-vida/${timestamp}-${fileName}`;
-    console.log("URL generada para hojaVida:", hojaVidaURL);
-
+    // Insertar los datos en la base de datos
     const { data, error } = await supabase
       .from("Postulaciones")
       .insert([
         {
           fechaPostulacion,
           nombreApellido,
+          empresaPostula,
           nivelEducativo,
           cargo,
           telefono,
+          correo,
           genero,
-          Departamento,
           Ciudad,
-          zonaResidencia,
-          barrio,
           fechaNacimiento,
           tipoDocumento,
           numeroDocumento,
-          recomendado,
-          hojaVida: hojaVidaURL,
-          check_BD: false,
-          observacion_BD,
+          check_BD: false, // Valor predeterminado
         },
       ])
       .select();
