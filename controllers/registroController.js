@@ -136,11 +136,21 @@ export const updateEstado = async (req, res) => {
       });
     }
 
+    // Prepare update object
+    const updateData = {
+      estado,
+      updated_at: getCurrentColombiaTimeISO(), // Explicitly update updated_at
+    };
+
+    // Include fecha_estado if provided
+    if (fecha_estado) {
+      updateData.fecha_estado = fecha_estado;
+    }
 
     // Update estado, fecha_estado, and updated_at in Postulaciones
     const { data, error } = await supabase
       .from("Postulaciones")
-      
+      .update(updateData)
       .eq("id", parseInt(id))
       .select();
 
@@ -710,7 +720,7 @@ export const registrarHistorial = async (req, res) => {
           accion,
           ejecutado_por,
           observacion,
-          
+          creado_en: getCurrentColombiaTimeISO(), // ✅ Hora de Colombia
         },
       ]);
 
