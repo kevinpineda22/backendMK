@@ -118,8 +118,9 @@ export const updateObservacionBD = async (req, res) => {
 export const updateEstado = async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado, ejecutado_por = "Sistema" } = req.body;
+    const { estado, ejecutado_por = "Sistema", fecha_estado } = req.body;
 
+    // Validate required fields
     if (!estado || typeof estado !== "string") {
       return res.status(400).json({
         success: false,
@@ -127,15 +128,41 @@ export const updateEstado = async (req, res) => {
       });
     }
 
-    // Actualizar estado en la tabla Postulaciones
+    // Validate fecha_estado if provided
+    if (fecha_estado && (typeof fecha_estado !== "string" || isNaN(Date.parse(fecha_estado)))) {
+      return res.status(400).json({
+        success: false,
+        message: "El campo 'fecha_estado' debe ser una fecha válida en formato ISO (e.g., '2025-05-09T12:34:56Z').",
+      });
+    }
+
+    // Prepare update object
+    const updateData = {
+      estado,
+      updated_at: getCurrentColombiaTimeISO(), // Explicitly update updated_at
+    };
+
+    // Include fecha_estado if provided
+    if (fecha_estado) {
+      updateData.fecha_estado = fecha_estado;
+    }
+
+    // Update estado, fecha_estado, and updated_at in Postulaciones
     const { data, error } = await supabase
       .from("Postulaciones")
-      .update({ estado })
+      .update(updateData)
       .eq("id", parseInt(id))
       .select();
 
     if (error) {
       return handleError(res, "Error al actualizar estado", error);
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Postulación no encontrada.",
+      });
     }
 
     // Obtener nombre del responsable desde la tabla Login
@@ -156,7 +183,7 @@ export const updateEstado = async (req, res) => {
           accion: estado,
           ejecutado_por,
           observacion: `Cambio de estado a '${estado}' realizado por ${nombreResponsable}.`,
-          creado_en: getCurrentColombiaTimeISO(), // ✅ Hora de Colombia
+          
         },
       ]);
 
@@ -166,15 +193,13 @@ export const updateEstado = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Campo 'estado' actualizado correctamente.",
-      data,
+      message: "Estado actualizado correctamente.",
+      data: data[0], // Return the updated postulación
     });
   } catch (err) {
     handleError(res, "Error inesperado al actualizar estado", err);
   }
 };
-
-
 
 // Obtener estadísticas
 export const getStats = async (req, res) => {
@@ -695,7 +720,7 @@ export const registrarHistorial = async (req, res) => {
           accion,
           ejecutado_por,
           observacion,
-          creado_en: getCurrentColombiaTimeISO(), // ✅ Hora de Colombia
+          
         },
       ]);
 
