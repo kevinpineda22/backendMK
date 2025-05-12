@@ -136,12 +136,7 @@ export const updateEstado = async (req, res) => {
       });
     }
 
-    // Prepare update object
-    const updateData = {
-      estado,
-      updated_at: getCurrentColombiaTimeISO(), // Explicitly update updated_at
-    };
-
+ 
     // Include fecha_estado if provided
     if (fecha_estado) {
       updateData.fecha_estado = fecha_estado;
