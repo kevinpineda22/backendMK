@@ -183,7 +183,7 @@ export const updateEstado = async (req, res) => {
           accion: estado,
           ejecutado_por,
           observacion: `Cambio de estado a '${estado}' realizado por ${nombreResponsable}.`,
-          
+          creado_en: getCurrentColombiaTimeISO(), // ✅ Hora de Colombia
         },
       ]);
 
