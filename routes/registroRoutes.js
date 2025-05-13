@@ -54,7 +54,7 @@ router.post("/api/enviar", upload.single("hojaVida"), enviarFormulario);
 router.post("/api/historial", registrarHistorial);
 
 // Actualizar estado
-router.put("/api/estado/:id", updateEstado);
+router.put("/estado/:id", updateEstado);
 
 // Rutas de documentos
 router.post("/api/documentos", upload.single("archivo"), subirDocumento);
