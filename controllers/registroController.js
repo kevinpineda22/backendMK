@@ -1,7 +1,7 @@
 import supabase from "../config/supabaseClient.js";
 import multer from "multer";
 import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
-import { sendEmail } from "./emailService.js"; // Importar el servicio de correo
+import { sendEmail as sendEmailService } from "./emailService.js"; // Renombramos el import con un alias
 
 // Configuración de Multer para documentos
 const storage = multer.memoryStorage();
@@ -277,7 +277,7 @@ export const descargarArchivo = async (req, res) => {
       console.error("Error al descargar desde Supabase:", error.message, {
         bucket,
         path,
-        filePath, // Corregido para mostrar correctamente filePath
+        filePath,
       });
       return res.status(404).json({
         success: false,
@@ -665,8 +665,8 @@ export const sendEmail = async (req, res) => {
       });
     }
 
-    // Enviar correo usando emailService
-    const result = await sendEmail({
+    // Enviar correo usando emailService (usamos el alias sendEmailService)
+    const result = await sendEmailService({
       to,
       subject,
       text: message,

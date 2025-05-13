@@ -2,10 +2,10 @@ const nodemailer = require('nodemailer');
 
 // Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // You can use another service like Outlook, Yahoo, etc.
+  service: 'gmail', // Puedes cambiar a otro servicio como Outlook, Yahoo, etc.
   auth: {
-    user: process.env.EMAIL_USER, // Your email address (e.g., gastosmerkahorro@gmail.com)
-    pass: process.env.EMAIL_PASS, // Your email password or app-specific password
+    user: process.env.EMAIL_USER, // Ejemplo: gastosmerkahorro@gmail.com
+    pass: process.env.EMAIL_PASS, // Contraseña o App Password de Gmail
   },
 });
 
@@ -14,7 +14,7 @@ const sendEmail = async ({ to, subject, text, html, postulacionId }) => {
   try {
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to, // Can be a string or array of emails
+      to, // Puede ser string o array de correos
       subject,
       text,
       html: html || `<p>${text}</p>${postulacionId ? `<p>ID de Postulación: ${postulacionId}</p>` : ''}`,
