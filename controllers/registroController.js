@@ -1,7 +1,7 @@
 import supabase from "../config/supabaseClient.js";
 import multer from "multer";
 import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
-import { sendEmail as sendEmailService } from "./emailService.js"; // Renombramos el import con un alias
+import { sendEmail as sendEmailService } from "./emailService.js";
 
 // Configuración de Multer para documentos
 const storage = multer.memoryStorage();

@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 // Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Function to send email
-const sendEmail = async ({ to, subject, text, html, postulacionId }) => {
+export const sendEmail = async ({ to, subject, text, html, postulacionId }) => {
   try {
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -27,5 +27,3 @@ const sendEmail = async ({ to, subject, text, html, postulacionId }) => {
     throw new Error(`Error al enviar correo: ${error.message}`);
   }
 };
-
-module.exports = { sendEmail };
