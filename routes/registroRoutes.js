@@ -13,7 +13,7 @@ import {
   subirDocumentosMultiples,
   eliminarDocumento,
   upload,
-  sendEmail,
+  sendEmailController,
   registrarHistorial,
 } from "../controllers/registroController.js";
 
@@ -62,6 +62,6 @@ router.post("/api/documentos/multiple", upload.array("archivos"), subirDocumento
 router.delete("/api/documentos/:id", eliminarDocumento);
 
 // Enviar correos
-router.post("/api/send-email", authenticate, sendEmail);
+router.post("/api/send-email", authenticate, sendEmailController);
 
 export default router;

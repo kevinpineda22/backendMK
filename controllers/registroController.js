@@ -723,3 +723,20 @@ export const registrarHistorial = async (req, res) => {
     });
   }
 };
+
+export const sendEmailController = async (req, res) => {
+  const { to, subject, text, html, postulacionId } = req.body;
+
+  // Validar campos requeridos
+  if (!to || !subject || !text) {
+    return res.status(400).json({ error: 'Faltan campos requeridos: to, subject, text' });
+  }
+
+  try {
+    const result = await sendEmail({ to, subject, text, html, postulacionId });
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Error en el endpoint /api/send-email:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
