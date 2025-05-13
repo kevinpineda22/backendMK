@@ -1,12 +1,11 @@
-import sgMail from '@sendgrid/mail';
 import supabase from "../config/supabaseClient.js";
 import multer from "multer";
 import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
+import { sendEmail } from "./emailService.js"; // Importar el servicio de correo
 
 // Configuración de Multer para documentos
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Manejador de errores genérico
 const handleError = (res, message, error, status = 500) => {
@@ -118,7 +117,7 @@ export const updateObservacionBD = async (req, res) => {
 export const updateEstado = async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado, ejecutado_por = "Sistema" } = req.body;
+    const { estado, ejecutado_por = "Sistema", sede } = req.body;
 
     if (!estado || typeof estado !== "string") {
       return res.status(400).json({
@@ -127,10 +126,13 @@ export const updateEstado = async (req, res) => {
       });
     }
 
-    // Actualizar solo el estado en la tabla Postulaciones
+    // Actualizar estado y sede en la tabla Postulaciones
+    const updateData = { estado };
+    if (sede) updateData.sede = sede;
+
     const { data, error } = await supabase
       .from("Postulaciones")
-      .update({ estado })
+      .update(updateData)
       .eq("id", parseInt(id))
       .select();
 
@@ -162,7 +164,7 @@ export const updateEstado = async (req, res) => {
           postulacion_id: parseInt(id),
           accion: estado,
           ejecutado_por,
-          observacion: `Cambio de estado a '${estado}' realizado por ${nombreResponsable}.`,
+          observacion: `Cambio de estado a '${estado}'${sede ? ` en sede '${sede}'` : ''} realizado por ${nombreResponsable}.`,
         },
       ]);
 
@@ -179,7 +181,6 @@ export const updateEstado = async (req, res) => {
     handleError(res, "Error inesperado al actualizar estado", err);
   }
 };
-
 
 // Obtener estadísticas
 export const getStats = async (req, res) => {
@@ -260,17 +261,15 @@ export const descargarArchivo = async (req, res) => {
 
     if (filePath.startsWith("hojas-vida/")) {
       bucket = "hojas-vida";
-      path = `hojas-vida/${
-        filePath.startsWith("hojas-vida/hojas-vida/")
-          ? filePath.replace("hojas-vida/hojas-vida/", "")
-          : filePath.replace("hojas-vida/", "")
-      }`;
+      path = filePath.startsWith("hojas-vida/hojas-vida/")
+        ? filePath.replace("hojas-vida/hojas-vida/", "")
+        : filePath.replace("hojas-vida/", "");
     } else {
       bucket = "documentos";
       path = filePath.replace("documentos/", "");
     }
 
-    console.log(`Intentando descargar - Bucket: ${bucket}, Path: ${path}`);
+    console.log(`Intentando descargar - Bucket: ${bucket}, Path: ${path}, Original filePath: ${filePath}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
 
@@ -278,7 +277,7 @@ export const descargarArchivo = async (req, res) => {
       console.error("Error al descargar desde Supabase:", error.message, {
         bucket,
         path,
-        filePath,
+        filePath, // Corregido para mostrar correctamente filePath
       });
       return res.status(404).json({
         success: false,
@@ -653,34 +652,37 @@ export const eliminarDocumento = async (req, res) => {
 // Exportar multer para usarlo en las rutas
 export { upload };
 
+// Enviar correo usando emailService
 export const sendEmail = async (req, res) => {
   try {
     const { to, subject, message, postulacionId } = req.body;
 
     // Validar parámetros
     if (!to || !subject || !message) {
-      return res.status(400).json({ error: 'Faltan parámetros requeridos' });
+      return res.status(400).json({
+        success: false,
+        message: "Faltan parámetros requeridos: to, subject, message",
+      });
     }
 
-    // Configurar el correo
-    const msg = {
-      to, // Array: ['juanmerkahorro@gmail.com', 'johanmerkahorro777@gmail.com']
-      from: 'gastosmerkahorro@gmail.com', // Cambia por tu correo verificado en SendGrid
+    // Enviar correo usando emailService
+    const result = await sendEmail({
+      to,
       subject,
       text: message,
-      html: `<p>${message}</p><p>ID de Postulación: ${postulacionId}</p>`,
-    };
+      postulacionId,
+    });
 
-    // Enviar el correo
-    await sgMail.send(msg);
-
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Error al enviar correo:', error);
-    res.status(500).json({ error: error.message });
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (err) {
+    handleError(res, "Error al enviar correo", err);
   }
 };
 
+// Registrar historial
 export const registrarHistorial = async (req, res) => {
   try {
     const { postulacion_id, accion, ejecutado_por, observacion } = req.body;
@@ -700,7 +702,7 @@ export const registrarHistorial = async (req, res) => {
           accion,
           ejecutado_por,
           observacion,
-          creado_en: getCurrentColombiaTimeISO(), // ✅ Hora de Colombia
+          creado_en: getCurrentColombiaTimeISO(),
         },
       ]);
 
