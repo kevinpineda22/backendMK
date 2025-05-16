@@ -126,7 +126,6 @@ export const updateEstado = async (req, res) => {
       });
     }
 
-    // Actualizar estado y sede en la tabla Postulaciones
     const updateData = { estado };
     if (sede) updateData.sede = sede;
 
@@ -147,7 +146,6 @@ export const updateEstado = async (req, res) => {
       });
     }
 
-    // Obtener nombre del responsable desde la tabla Login
     const { data: usuario } = await supabase
       .from("Login")
       .select("nombre")
@@ -156,7 +154,6 @@ export const updateEstado = async (req, res) => {
 
     const nombreResponsable = usuario?.nombre || ejecutado_por;
 
-    // Insertar en historial_postulacion
     const { error: historialError } = await supabase
       .from("historial_postulacion")
       .insert([
@@ -269,21 +266,16 @@ export const descargarArchivo = async (req, res) => {
       path = filePath.replace("documentos/", "");
     }
 
-    console.log(`Intentando descargar - Bucket: ${bucket}, Path: ${path}, Original filePath: ${filePath}`);
+    console.log(`Intentando descargar - Bucket: ${bucket}, Path: ${path}`);
 
     const { data, error } = await supabase.storage.from(bucket).download(path);
 
     if (error) {
-      console.error("Error al descargar desde Supabase:", error.message, {
-        bucket,
-        path,
-        filePath,
-      });
+      console.error("Error al descargar desde Supabase:", error.message);
       return res.status(404).json({
         success: false,
         message: "Archivo no encontrado en el bucket.",
         error: error.message,
-        details: { bucket, path, filePath },
       });
     }
 
@@ -320,10 +312,59 @@ export const enviarFormulario = async (req, res) => {
     } = req.body;
 
     // Validar campos obligatorios
-    if (!nombreApellido || !numeroDocumento || !tipoDocumento) {
+    const requiredFields = {
+      nombreApellido: "Nombre y Apellido",
+      empresaPostula: "Empresa a la que se postula",
+      nivelEducativo: "Nivel Educativo",
+      cargo: "Cargo",
+      telefono: "Teléfono",
+      correo: "Correo Electrónico",
+      genero: "Género",
+      Ciudad: "Ciudad",
+      fechaNacimiento: "Fecha de Nacimiento",
+      tipoDocumento: "Tipo de Documento",
+      numeroDocumento: "Número de Documento",
+    };
+
+    const missingFields = Object.keys(requiredFields).filter(
+      (key) => !req.body[key] || req.body[key].trim() === ""
+    );
+
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Los campos nombreApellido, numeroDocumento y tipoDocumento son obligatorios.",
+        message: `Faltan campos obligatorios: ${missingFields
+          .map((key) => requiredFields[key])
+          .join(", ")}.`,
+      });
+    }
+
+    // Validaciones adicionales
+    if (!/^[A-Za-záéíóúÁÉÍÓÚüÜñÑ\s]{1,50}$/.test(nombreApellido)) {
+      return res.status(400).json({
+        success: false,
+        message: "El nombre y apellido solo puede contener letras y espacios (máx. 50 caracteres).",
+      });
+    }
+
+    if (!/^\d{5,10}$/.test(numeroDocumento)) {
+      return res.status(400).json({
+        success: false,
+        message: "El número de documento debe tener entre 5 y 10 dígitos.",
+      });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      return res.status(400).json({
+        success: false,
+        message: "El correo electrónico no es válido.",
+      });
+    }
+
+    if (!/^(3\d{9}|[1-9]\d{6}|\d{10})$/.test(telefono.replace(/\D/g, ""))) {
+      return res.status(400).json({
+        success: false,
+        message: "El número de teléfono no es válido.",
       });
     }
 
@@ -362,7 +403,7 @@ export const enviarFormulario = async (req, res) => {
           fechaNacimiento,
           tipoDocumento,
           numeroDocumento,
-          check_BD: false, // Valor predeterminado
+          check_BD: false,
         },
       ])
       .select();
@@ -387,7 +428,6 @@ export const subirDocumento = async (req, res) => {
     const { postulacion_id, tipo, categoria, beneficiarioId, subcarpeta } = req.body;
     const archivo = req.file;
 
-    // Depuración: Verificar qué se recibe en el backend
     console.log("Datos recibidos en subirDocumento:", {
       postulacion_id,
       tipo,
@@ -427,8 +467,7 @@ export const subirDocumento = async (req, res) => {
       );
     }
 
-    // Construir la ruta del archivo usando directamente el valor de subcarpeta como prefijo
-    const basePath = subcarpeta || "documentos"; // Si no hay subcarpeta, usar "documentos" como prefijo por defecto
+    const basePath = subcarpeta || "documentos";
     const filePath = `${basePath}/${parsedPostulacionId}_${tipo}_${Date.now()}_${archivo.originalname}`;
     console.log("Ruta construida para subir el archivo:", filePath);
 
@@ -657,7 +696,6 @@ export const sendEmail = async (req, res) => {
   try {
     const { to, subject, message, postulacionId } = req.body;
 
-    // Validar parámetros
     if (!to || !subject || !message) {
       return res.status(400).json({
         success: false,
@@ -665,7 +703,6 @@ export const sendEmail = async (req, res) => {
       });
     }
 
-    // Enviar correo usando emailService (usamos el alias sendEmailService)
     const result = await sendEmailService({
       to,
       subject,
@@ -716,11 +753,6 @@ export const registrarHistorial = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Historial registrado.", data });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: "Error interno al registrar historial.",
-      error: err.message,
-    });
+    handleError(res, "Error interno al registrar historial", err);
   }
 };
-

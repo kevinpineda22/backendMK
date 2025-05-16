@@ -19,21 +19,10 @@ import {
 
 const router = Router();
 
-// Middleware de autenticación (ejemplo, implementar según tu sistema)
+// Middleware de autenticación (desactivado temporalmente)
 const authenticate = (req, res, next) => {
-  // Aquí verificarías un token JWT o similar
-  // Por ejemplo, usando jsonwebtoken
-  /*
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-  try {
-    jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch (error) {
-    return res.status(401).json({ success: false, message: "Token inválido" });
-  }
-  */
-  next(); // Temporalmente sin autenticación
+  // Implementar autenticación con JWT si es necesario
+  next();
 };
 
 // Ruta raíz
@@ -50,11 +39,11 @@ router.get("/api/postulaciones/details", getDetails);
 router.get("/api/descargar/*", descargarArchivo);
 
 // Enviar formulario y historial
-router.post("/api/enviar", upload.single("hojaVida"), enviarFormulario);
+router.post("/api/enviar", enviarFormulario); // Sin multer, ya que el frontend envía JSON
 router.post("/api/historial", registrarHistorial);
 
 // Actualizar estado
-router.put("/estado/:id", updateEstado);
+router.patch("/estado/:id", updateEstado); // Cambiado a PATCH para consistencia
 
 // Rutas de documentos
 router.post("/api/documentos", upload.single("archivo"), subirDocumento);
