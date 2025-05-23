@@ -16,7 +16,7 @@ export const sendEmail = async ({ to, subject, text, html, postulacionId }) => {
       }`;
 
     const data = await resend.emails.send({
-      from: 'onboarding@resend.dev', // Usa un dominio verificado en Resend
+      from: 'noreply@merkahorro.com', // Usa un dominio verificado en Resend
       to,
       subject,
       html: contenidoHTML,
