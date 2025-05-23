@@ -50,7 +50,7 @@ router.get("/api/postulaciones/details", getDetails);
 router.get("/api/descargar/*", descargarArchivo);
 
 // Enviar formulario y historial
-router.post("/api/enviar", upload.single("hojaVida"), enviarFormulario);
+router.post("/api/enviar", enviarFormulario); // Sin multer, ya que el frontend envía JSON
 router.post("/api/historial", registrarHistorial);
 
 // Actualizar estado
