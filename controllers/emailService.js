@@ -1,30 +1,29 @@
-// emailService.js
-import { Resend } from 'resend';
-import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 
-dotenv.config();
+// Configure Nodemailer transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // Puedes cambiar a otro servicio como Outlook, Yahoo, etc.
+  auth: {
+    user: process.env.EMAIL_USER, // Ejemplo: gastosmerkahorro@gmail.com
+    pass: process.env.EMAIL_PASS, // Contraseña o App Password de Gmail
+  },
+});
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Función para enviar correos con Resend
+// Function to send email
 export const sendEmail = async ({ to, subject, text, html, postulacionId }) => {
   try {
-    const contenidoHTML =
-      html ||
-      `<p>${text}</p>${
-        postulacionId ? `<p><strong>ID de Postulación:</strong> ${postulacionId}</p>` : ''
-      }`;
-
-    const data = await resend.emails.send({
-      from: 'noreply@merkahorro.com', // Usa un dominio verificado en Resend
-      to,
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to, // Puede ser string o array de correos
       subject,
-      html: contenidoHTML,
-    });
+      text,
+      html: html || `<p>${text}</p>${postulacionId ? `<p>ID de Postulación: ${postulacionId}</p>` : ''}`,
+    };
 
-    return { success: true, message: 'Correo enviado exitosamente', data };
+    await transporter.sendMail(mailOptions);
+    return { success: true, message: 'Correo enviado exitosamente' };
   } catch (error) {
-    console.error('❌ Error al enviar correo:', error);
+    console.error('Error al enviar correo:', error);
     throw new Error(`Error al enviar correo: ${error.message}`);
   }
 };
