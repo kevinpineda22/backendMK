@@ -15,6 +15,7 @@ import {
   upload,
   sendEmail,
   registrarHistorial,
+  updateCodigoRequisicion,
 } from "../controllers/registroController.js";
 import { enviarSolicitudPersonal } from "../controllers/solicitudPersonalController.js";
 
@@ -54,6 +55,8 @@ router.delete("/api/documentos/:id", eliminarDocumento);
 
 // Enviar correos
 router.post("/api/send-email", authenticate, sendEmail);
+
+router.patch("/api/postulaciones/:id/codigo-requisicion", updateCodigoRequisicion);
 
 
 //---------------------------------------SOLICITUD PERSONAL----------------------------------------------//

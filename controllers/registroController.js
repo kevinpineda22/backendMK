@@ -756,3 +756,30 @@ export const registrarHistorial = async (req, res) => {
     handleError(res, "Error interno al registrar historial", err);
   }
 };
+
+export const updateCodigoRequisicion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { codigo_requisicion } = req.body;
+
+    const { data, error } = await supabase
+      .from("Postulaciones")
+      .update({ codigo_requisicion })
+      .eq("id", parseInt(id))
+      .select();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: "Código de requisición actualizado.",
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Error al actualizar código de requisición.",
+      error: err.message,
+    });
+  }
+};
