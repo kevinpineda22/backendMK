@@ -88,3 +88,32 @@ export const enviarSolicitudPersonal = async (req, res) => {
     });
   }
 };
+
+export const obtenerSolicitudesPersonal = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("solicitudes_personal")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Error al obtener las solicitudes.",
+        error: error.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: data || [],
+    });
+  } catch (err) {
+    console.error("Error general:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error inesperado al obtener las solicitudes.",
+      error: err.message,
+    });
+  }
+};
