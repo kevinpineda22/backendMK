@@ -16,23 +16,14 @@ import {
   sendEmail,
   registrarHistorial,
 } from "../controllers/registroController.js";
+import { enviarSolicitudPersonal } from "../controllers/solicitudPersonalController.js";
+
 
 const router = Router();
 
 // Middleware de autenticación (ejemplo, implementar según tu sistema)
 const authenticate = (req, res, next) => {
-  // Aquí verificarías un token JWT o similar
-  // Por ejemplo, usando jsonwebtoken
-  /*
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ success: false, message: "No autorizado" });
-  try {
-    jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch (error) {
-    return res.status(401).json({ success: false, message: "Token inválido" });
-  }
-  */
+  
   next(); // Temporalmente sin autenticación
 };
 
@@ -63,5 +54,10 @@ router.delete("/api/documentos/:id", eliminarDocumento);
 
 // Enviar correos
 router.post("/api/send-email", authenticate, sendEmail);
+
+
+//---------------------------------------SOLICITUD PERSONAL----------------------------------------------//
+router.post("/api/solicitud-personal", enviarSolicitudPersonal);
+
 
 export default router;
