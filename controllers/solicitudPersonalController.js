@@ -3,52 +3,60 @@ import { sendEmail as sendEmailService } from "./emailService.js";
 import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
 
 const DESTINATARIOS = [
-    "juanmerkahorro@gmail.com",
-    "johanmerkahorro777@gmail.com"
+  "juanmerkahorro@gmail.com",
+  "johanmerkahorro777@gmail.com"
 ];
 
 export const enviarSolicitudPersonal = async (req, res) => {
-    try {
-        const solicitud = req.body;
+  try {
+    const solicitud = req.body;
+    solicitud.created_at = getCurrentColombiaTimeISO();
 
-        // Obtener el último código generado
-        const { data: ultimas, error: fetchError } = await supabase
-            .from("solicitudes_personal")
-            .select("codigo_requisicion")
-            .order("created_at", { ascending: false })
-            .limit(1);
+    // Generar código único de requisición tipo REQ-001
+    let intento = 1;
+    let nuevoCodigo;
 
-        if (fetchError) {
-            return res.status(500).json({
-                success: false,
-                message: "Error consultando últimos códigos",
-                error: fetchError.message,
-            });
-        }
+    while (intento < 10000) {
+      const codigoPropuesto = `REQ-${String(intento).padStart(3, "0")}`;
+      const { data: existe } = await supabase
+        .from("solicitudes_personal")
+        .select("id")
+        .eq("codigo_requisicion", codigoPropuesto)
+        .maybeSingle();
 
-        let nuevoCodigo = "REQ-001";
-        if (ultimas.length > 0 && ultimas[0].codigo_requisicion) {
-            const lastNum = parseInt(ultimas[0].codigo_requisicion.split("-")[1]) || 0;
-            nuevoCodigo = `REQ-${String(lastNum + 1).padStart(3, "0")}`;
-        }
+      if (!existe) {
+        nuevoCodigo = codigoPropuesto;
+        break;
+      }
 
-        solicitud.created_at = getCurrentColombiaTimeISO();
-        solicitud.codigo_requisicion = nuevoCodigo;
+      intento++;
+    }
 
-        const { data, error: insertError } = await supabase
-            .from("solicitudes_personal")
-            .insert([solicitud])
-            .select();
+    if (!nuevoCodigo) {
+      return res.status(500).json({
+        success: false,
+        message: "No se pudo generar un código único de requisición.",
+      });
+    }
 
-        if (insertError) {
-            return res.status(500).json({
-                success: false,
-                message: "Error al guardar la solicitud.",
-                error: insertError.message,
-            });
-        }
+    solicitud.codigo_requisicion = nuevoCodigo;
 
-        const html = `
+    // Insertar en Supabase
+    const { data, error: insertError } = await supabase
+      .from("solicitudes_personal")
+      .insert([solicitud])
+      .select();
+
+    if (insertError) {
+      return res.status(500).json({
+        success: false,
+        message: "Error al guardar la solicitud.",
+        error: insertError.message,
+      });
+    }
+
+    // Enviar notificación por correo
+    const html = `
       <p><strong>📋 Nueva Solicitud de Personal</strong></p>
       <p><strong>Código:</strong> ${nuevoCodigo}</p>
       <p><strong>Cargo:</strong> ${solicitud.cargo_solicitado}</p>
@@ -57,25 +65,26 @@ export const enviarSolicitudPersonal = async (req, res) => {
       <p><strong>Fecha estimada de ingreso:</strong> ${solicitud.fecha_ingreso}</p>
     `;
 
-        for (const to of DESTINATARIOS) {
-            await sendEmailService({
-                to,
-                subject: "📩 Nueva Solicitud de Personal",
-                html,
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Solicitud enviada correctamente y notificada.",
-            codigo_requisicion: nuevoCodigo,
-        });
-    } catch (err) {
-        console.error("Error general:", err);
-        res.status(500).json({
-            success: false,
-            message: "Error inesperado al procesar la solicitud.",
-            error: err.message,
-        });
+    for (const to of DESTINATARIOS) {
+      await sendEmailService({
+        to,
+        subject: "📩 Nueva Solicitud de Personal",
+        html,
+      });
     }
+
+    // Respuesta final
+    res.status(200).json({
+      success: true,
+      message: "Solicitud enviada correctamente y notificada.",
+      codigo_requisicion: nuevoCodigo,
+    });
+  } catch (err) {
+    console.error("Error general:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error inesperado al procesar la solicitud.",
+      error: err.message,
+    });
+  }
 };
