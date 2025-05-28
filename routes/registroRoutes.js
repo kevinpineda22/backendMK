@@ -74,15 +74,4 @@ router.post("/", enviarSolicitudPersonal);
 // Ruta para obtener todas las solicitudes de personal
 router.get("/", obtenerSolicitudesPersonal);
 
-// Ruta para actualizar el código de requisición de una solicitud existente
-router.patch("/:id", actualizarCodigoRequisicionSolicitud);
-
-// Ruta para actualizar código de requisición de una postulación
-router.patch(
-  "/postulaciones/:id/codigo-requisicion",
-  actualizarCodigoRequisicionPostulacion
-);
-
-
-
 export default router;
