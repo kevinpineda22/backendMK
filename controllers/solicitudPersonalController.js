@@ -2,7 +2,10 @@ import supabase from "../config/supabaseClient.js";
 import { sendEmail as sendEmailService } from "./emailService.js";
 import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
 
-const DESTINATARIOS = ["juanmerkahorro@gmail.com", "johanmerkahorro777@gmail.com"];
+const DESTINATARIOS = [
+  "juanmerkahorro@gmail.com",
+  "johanmerkahorro777@gmail.com",
+];
 
 export const enviarSolicitudPersonal = async (req, res) => {
   try {
@@ -40,7 +43,12 @@ export const enviarSolicitudPersonal = async (req, res) => {
       }, {});
 
     // Validar campos requeridos (NOT NULL)
-    const requiredFields = ["cargo_solicitado", "sede", "fecha_solicitud", "solicitado_por"];
+    const requiredFields = [
+      "cargo_solicitado",
+      "sede",
+      "fecha_solicitud",
+      "solicitado_por",
+    ];
     for (const field of requiredFields) {
       if (!solicitudFiltrada[field] || solicitudFiltrada[field] === "") {
         return res.status(400).json({
@@ -59,7 +67,10 @@ export const enviarSolicitudPersonal = async (req, res) => {
     }
 
     // Validar sugerencia_persona
-    if (solicitudFiltrada.sugerencia_persona && !["si", "no"].includes(solicitudFiltrada.sugerencia_persona)) {
+    if (
+      solicitudFiltrada.sugerencia_persona &&
+      !["si", "no"].includes(solicitudFiltrada.sugerencia_persona)
+    ) {
       return res.status(400).json({
         success: false,
         message: "El campo sugerencia_persona debe ser 'si' o 'no'.",
@@ -168,6 +179,88 @@ export const obtenerSolicitudesPersonal = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error inesperado al obtener las solicitudes.",
+      error: err.message,
+    });
+  }
+};
+
+// Actualizar código de requisición de una solicitud de personal
+export const actualizarCodigoRequisicionSolicitud = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { codigo_requisicion } = req.body;
+
+    if (codigo_requisicion && codigo_requisicion.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: "El código de requisición no puede exceder los 50 caracteres.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("solicitudes_personal")
+      .update({ codigo_requisicion: codigo_requisicion || null })
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Error al actualizar el código de requisición.",
+        error: error.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Código de requisición actualizado correctamente.",
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Error inesperado al actualizar el código de requisición.",
+      error: err.message,
+    });
+  }
+};
+
+// Actualizar código de requisición de una postulación
+export const actualizarCodigoRequisicionPostulacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { codigo_requisicion } = req.body;
+
+    if (codigo_requisicion && codigo_requisicion.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: "El código de requisición no puede exceder los 50 caracteres.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("Postulaciones")
+      .update({ codigo_requisicion: codigo_requisicion || null })
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Error al actualizar el código de requisición.",
+        error: error.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Código de requisición actualizado correctamente.",
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Error inesperado al actualizar el código de requisición.",
       error: err.message,
     });
   }

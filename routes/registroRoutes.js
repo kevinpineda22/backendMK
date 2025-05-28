@@ -17,7 +17,12 @@ import {
   registrarHistorial,
   updateCodigoRequisicion,
 } from "../controllers/registroController.js";
-import { enviarSolicitudPersonal, obtenerSolicitudesPersonal } from "../controllers/solicitudPersonalController.js";
+import {
+  enviarSolicitudPersonal,
+  obtenerSolicitudesPersonal,
+  actualizarCodigoRequisicionSolicitud,
+  actualizarCodigoRequisicionPostulacion,
+} from "../controllers/solicitudPersonalController.js";
 
 
 const router = Router();
@@ -62,6 +67,22 @@ router.patch("/api/postulaciones/:id/codigo-requisicion", updateCodigoRequisicio
 //---------------------------------------SOLICITUD PERSONAL----------------------------------------------//
 router.post("/api/solicitud-personal", enviarSolicitudPersonal);
 router.get("/api/solicitudes-personal", obtenerSolicitudesPersonal);
+
+// Ruta para enviar una nueva solicitud de personal
+router.post("/", enviarSolicitudPersonal);
+
+// Ruta para obtener todas las solicitudes de personal
+router.get("/", obtenerSolicitudesPersonal);
+
+// Ruta para actualizar el código de requisición de una solicitud existente
+router.patch("/:id", actualizarCodigoRequisicionSolicitud);
+
+// Ruta para actualizar código de requisición de una postulación
+router.patch(
+  "/postulaciones/:id/codigo-requisicion",
+  actualizarCodigoRequisicionPostulacion
+);
+
 
 
 export default router;
