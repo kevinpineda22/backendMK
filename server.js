@@ -3,7 +3,6 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import registroRoutes from "./routes/registroRoutes.js";
-import solicitudPersonalRoutes from "./routes/solicitudPersonalRoutes.js";
 
 dotenv.config();
 
@@ -18,14 +17,13 @@ app.use(
   })
 );
 
-app.options("*", cors()); // Responder preflight
+app.options('*', cors()); // Responder preflight
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Rutas
 app.use(registroRoutes);
-app.use("/api/solicitudes-personal", solicitudPersonalRoutes);
 
 // Exportar para Vercel
 export default app;
