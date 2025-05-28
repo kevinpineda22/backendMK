@@ -20,8 +20,6 @@ import {
 import {
   enviarSolicitudPersonal,
   obtenerSolicitudesPersonal,
-  actualizarCodigoRequisicionSolicitud,
-  actualizarCodigoRequisicionPostulacion,
 } from "../controllers/solicitudPersonalController.js";
 
 
