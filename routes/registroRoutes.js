@@ -66,10 +66,4 @@ router.patch("/api/postulaciones/:id/codigo-requisicion", updateCodigoRequisicio
 router.post("/api/solicitud-personal", enviarSolicitudPersonal);
 router.get("/api/solicitudes-personal", obtenerSolicitudesPersonal);
 
-// Ruta para enviar una nueva solicitud de personal
-router.post("/", enviarSolicitudPersonal);
-
-// Ruta para obtener todas las solicitudes de personal
-router.get("/", obtenerSolicitudesPersonal);
-
 export default router;

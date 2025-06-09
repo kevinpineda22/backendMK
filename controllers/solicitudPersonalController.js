@@ -121,23 +121,47 @@ export const enviarSolicitudPersonal = async (req, res) => {
       });
     }
 
-    // Enviar notificación por correo
-    const html = `
-      <p><strong>📋 Nueva Solicitud de Personal</strong></p>
-      <p><strong>Código:</strong> ${nuevoCodigo}</p>
-      <p><strong>Cargo:</strong> ${solicitudFiltrada.cargo_solicitado}</p>
-      <p><strong>Sede:</strong> ${solicitudFiltrada.sede}</p>
-      <p><strong>Solicitado por:</strong> ${solicitudFiltrada.solicitado_por}</p>
-      <p><strong>Promoción interna:</strong> ${solicitudFiltrada.sugerencia_persona || "No especificado"}</p>
-      <p><strong>Fecha estimada de ingreso:</strong> ${solicitudFiltrada.fecha_ingreso || "N/A"}</p>
-    `;
+    // Determinar destinatarios según el motivo
+    const motivosPrincipales = [
+      "Renuncia",
+      "Terminación del Contrato",
+      "Vacaciones",
+      "Incapacidad",
+      "Cargo Nuevo",
+    ];
+    let destinatarios = [];
 
-    for (const to of DESTINATARIOS) {
-      await sendEmailService({
-        to,
-        subject: "📩 Nueva Solicitud de Personal",
-        html,
-      });
+    if (solicitudFiltrada.motivo && solicitudFiltrada.motivo.length > 0) {
+      const tieneMotivoPrincipal = solicitudFiltrada.motivo.some((m) =>
+        motivosPrincipales.includes(m)
+      );
+      const tieneOtroMotivo = solicitudFiltrada.motivo.includes("Otro motivo");
+
+      if (tieneMotivoPrincipal || tieneOtroMotivo) {
+        destinatarios = ["juanmerkahorro@gmail.com"];
+      }
+    }
+
+    if (destinatarios.length > 0) {
+      // Enviar notificación por correo
+      const html = `
+        <p><strong>📋 Nueva Solicitud de Personal</strong></p>
+        <p><strong>Código:</strong> ${nuevoCodigo}</p>
+        <p><strong>Cargo:</strong> ${solicitudFiltrada.cargo_solicitado}</p>
+        <p><strong>Sede:</strong> ${solicitudFiltrada.sede}</p>
+        <p><strong>Solicitado por:</strong> ${solicitudFiltrada.solicitado_por}</p>
+        <p><strong>Promoción interna:</strong> ${solicitudFiltrada.sugerencia_persona || "No especificado"}</p>
+        <p><strong>Fecha estimada de ingreso:</strong> ${solicitudFiltrada.fecha_ingreso || "N/A"}</p>
+        <p><strong>Motivo(s):</strong> ${solicitudFiltrada.motivo.join(", ")}</p>
+      `;
+
+      for (const to of destinatarios) {
+        await sendEmailService({
+          to,
+          subject: "📩 Nueva Solicitud de Personal",
+          html,
+        });
+      }
     }
 
     res.status(200).json({
