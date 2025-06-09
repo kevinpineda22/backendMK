@@ -137,8 +137,13 @@ export const enviarSolicitudPersonal = async (req, res) => {
       );
       const tieneOtroMotivo = solicitudFiltrada.motivo.includes("Otro motivo");
 
-      if (tieneMotivoPrincipal || tieneOtroMotivo) {
+      if (tieneMotivoPrincipal && !tieneOtroMotivo) {
         destinatarios = ["juanmerkahorro@gmail.com"];
+      } else if (tieneOtroMotivo) {
+        destinatarios = ["johanmerkahorro777@gmail.com"];
+      } else if (tieneMotivoPrincipal && tieneOtroMotivo) {
+        // Si se combinan ambos tipos, enviar a ambos para cubrir todos los casos
+        destinatarios = ["juanmerkahorro@gmail.com", "johanmerkahorro777@gmail.com"];
       }
     }
 
