@@ -1,6 +1,7 @@
 import supabase from "../config/supabaseClient.js";
 import { sendEmail as sendEmailService } from "./emailService.js";
 import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
+import crypto from "crypto";
 
 const DESTINATARIOS = [
   "juanmerkahorro@gmail.com",
@@ -34,7 +35,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
       "requisitos",
       "solicitado_por",
       "aprobado_por",
-      "otroMotivoTexto", // Añadimos este campo para incluirlo en el correo
+      "otroMotivoTexto",
     ];
     const solicitudFiltrada = Object.keys(solicitud)
       .filter((key) => camposPermitidos.includes(key))
@@ -79,6 +80,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
     }
 
     solicitudFiltrada.created_at = getCurrentColombiaTimeISO();
+    solicitudFiltrada.estado = "pendiente"; // Estado inicial
 
     // Generar código único (REQ-XXX)
     let intento = 1;
@@ -106,6 +108,10 @@ export const enviarSolicitudPersonal = async (req, res) => {
     }
 
     solicitudFiltrada.codigo_requisicion = nuevoCodigo;
+
+    // Generar token único para aprobación/rechazo
+    const token = crypto.randomBytes(16).toString("hex");
+    solicitudFiltrada.aprobacion_token = token;
 
     // Insertar en Supabase
     const { data, error: insertError } = await supabase
@@ -143,13 +149,11 @@ export const enviarSolicitudPersonal = async (req, res) => {
       } else if (tieneOtroMotivo) {
         destinatarios = ["johanmerkahorro777@gmail.com"];
       } else if (tieneMotivoPrincipal && tieneOtroMotivo) {
-        // Si se combinan ambos tipos, enviar a ambos para cubrir todos los casos
         destinatarios = ["juanmerkahorro@gmail.com", "johanmerkahorro777@gmail.com"];
       }
     }
 
     if (destinatarios.length > 0) {
-      // Preparar el contenido del correo con diseño mejorado
       const motivosTexto = solicitudFiltrada.motivo
         ? solicitudFiltrada.motivo.join(", ")
         : "No especificado";
@@ -164,6 +168,9 @@ export const enviarSolicitudPersonal = async (req, res) => {
               solicitudFiltrada.sugerencia_cargo || "No especificado"
             }`
           : "No";
+
+      const approvalUrl = `${process.env.FRONTEND_URL}/aprobar-solicitud?token=${token}&codigo=${nuevoCodigo}`;
+      const rejectionUrl = `${process.env.FRONTEND_URL}/rechazar-solicitud?token=${token}&codigo=${nuevoCodigo}`;
 
       const html = `
         <!DOCTYPE html>
@@ -210,6 +217,24 @@ export const enviarSolicitudPersonal = async (req, res) => {
               width: 30%;
               color: #555;
             }
+            .actions {
+              text-align: center;
+              padding: 20px;
+            }
+            .actions a {
+              display: inline-block;
+              padding: 10px 20px;
+              margin: 0 10px;
+              text-decoration: none;
+              color: white;
+              border-radius: 5px;
+            }
+            .actions .approve {
+              background-color: #28a745;
+            }
+            .actions .reject {
+              background-color: #dc3545;
+            }
             .footer {
               text-align: center;
               padding: 10px;
@@ -227,6 +252,10 @@ export const enviarSolicitudPersonal = async (req, res) => {
               }
               .content td:first-child {
                 width: 100%;
+              }
+              .actions a {
+                display: block;
+                margin: 10px 0;
               }
             }
           </style>
@@ -246,6 +275,10 @@ export const enviarSolicitudPersonal = async (req, res) => {
                 <tr><td>Fecha estimada de ingreso:</td><td>${solicitudFiltrada.fecha_ingreso || "N/A"}</td></tr>
                 <tr><td>Motivo(s):</td><td>${motivosTexto}${otroMotivoTexto}</td></tr>
               </table>
+              <div class="actions">
+                <a href="${approvalUrl}" class="approve">Aprobar</a>
+                <a href="${rejectionUrl}" class="reject">Rechazar</a>
+              </div>
             </div>
             <div class="footer">
               <p>© 2025 Merkahorro. Todos los derechos reservados.</p>
@@ -274,6 +307,68 @@ export const enviarSolicitudPersonal = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error inesperado al procesar la solicitud.",
+      error: err.message,
+    });
+  }
+};
+
+// Nuevo endpoint para aprobar/rechazar
+export const procesarAprobacion = async (req, res) => {
+  try {
+    const { token, codigo, accion } = req.query;
+
+    if (!token || !codigo || !["aprobar", "rechazar"].includes(accion)) {
+      return res.status(400).json({
+        success: false,
+        message: "Token, código o acción inválidos.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("solicitudes_personal")
+      .select("aprobacion_token, estado")
+      .eq("codigo_requisicion", codigo)
+      .eq("aprobacion_token", token)
+      .maybeSingle();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        message: "Solicitud no encontrada o token inválido.",
+      });
+    }
+
+    if (data.estado !== "pendiente") {
+      return res.status(400).json({
+        success: false,
+        message: "Esta solicitud ya ha sido procesada.",
+      });
+    }
+
+    const nuevoEstado = accion === "aprobar" ? "aprobado" : "rechazado";
+    const { error: updateError } = await supabase
+      .from("solicitudes_personal")
+      .update({ estado: nuevoEstado })
+      .eq("codigo_requisicion", codigo)
+      .eq("aprobacion_token", token);
+
+    if (updateError) {
+      return res.status(500).json({
+        success: false,
+        message: "Error al actualizar el estado.",
+        error: updateError.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Solicitud ${nuevoEstado} con éxito.`,
+    });
+  } catch (err) {
+    console.error("Error general:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error inesperado al procesar la aprobación.",
       error: err.message,
     });
   }
