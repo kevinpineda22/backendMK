@@ -169,8 +169,8 @@ export const enviarSolicitudPersonal = async (req, res) => {
             }`
           : "No";
 
-      const approvalUrl = `${process.env.FRONTEND_URL}/aprobar-solicitud?token=${token}&codigo=${nuevoCodigo}`;
-      const rejectionUrl = `${process.env.FRONTEND_URL}/rechazar-solicitud?token=${token}&codigo=${nuevoCodigo}`;
+      const approvalUrl = `${process.env.FRONTEND_URL}/aprobar-rechazar?token=${token}&codigo=${nuevoCodigo}&tipo=personal`;
+      const rejectionUrl = `${process.env.FRONTEND_URL}/aprobar-rechazar?token=${token}&codigo=${nuevoCodigo}&tipo=personal`;
 
       const html = `
         <!DOCTYPE html>
@@ -312,15 +312,15 @@ export const enviarSolicitudPersonal = async (req, res) => {
   }
 };
 
-// Nuevo endpoint para aprobar/rechazar
+// Endpoint para procesar aprobación/rechazo de solicitudes de personal
 export const procesarAprobacion = async (req, res) => {
   try {
-    const { token, codigo, accion } = req.query;
+    const { token, codigo, decision, observacion, hora_cambio_estado } = req.body;
 
-    if (!token || !codigo || !["aprobar", "rechazar"].includes(accion)) {
+    if (!token || !codigo || !["aprobado", "rechazado"].includes(decision)) {
       return res.status(400).json({
         success: false,
-        message: "Token, código o acción inválidos.",
+        message: "Token, código o decisión inválidos.",
       });
     }
 
@@ -345,10 +345,13 @@ export const procesarAprobacion = async (req, res) => {
       });
     }
 
-    const nuevoEstado = accion === "aprobar" ? "aprobado" : "rechazado";
     const { error: updateError } = await supabase
       .from("solicitudes_personal")
-      .update({ estado: nuevoEstado })
+      .update({
+        estado: decision,
+        observacion,
+        hora_cambio_estado,
+      })
       .eq("codigo_requisicion", codigo)
       .eq("aprobacion_token", token);
 
@@ -362,7 +365,7 @@ export const procesarAprobacion = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Solicitud ${nuevoEstado} con éxito.`,
+      message: `Solicitud ${decision} con éxito.`,
     });
   } catch (err) {
     console.error("Error general:", err);

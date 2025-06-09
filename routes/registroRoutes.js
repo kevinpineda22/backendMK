@@ -20,6 +20,7 @@ import {
 import {
   enviarSolicitudPersonal,
   obtenerSolicitudesPersonal,
+  procesarAprobacion,
 } from "../controllers/solicitudPersonalController.js";
 
 
@@ -65,5 +66,6 @@ router.patch("/api/postulaciones/:id/codigo-requisicion", updateCodigoRequisicio
 //---------------------------------------SOLICITUD PERSONAL----------------------------------------------//
 router.post("/api/solicitud-personal", enviarSolicitudPersonal);
 router.get("/api/solicitudes-personal", obtenerSolicitudesPersonal);
+router.post("/api/procesar-aprobacion", procesarAprobacion);
 
 export default router;
