@@ -187,7 +187,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
               box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             }
             .header {
-              background-color: #28a745;
+              background-color: #210d65;
               color: white;
               padding: 20px;
               text-align: center;
