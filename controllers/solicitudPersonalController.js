@@ -169,8 +169,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
             }`
           : "No";
 
-      const approvalUrl = `${process.env.FRONTEND_URL}/aprobar-rechazar?token=${token}&codigo=${nuevoCodigo}&tipo=personal`;
-      const rejectionUrl = `${process.env.FRONTEND_URL}/aprobar-rechazar?token=${token}&codigo=${nuevoCodigo}&tipo=personal`;
+      const decisionUrl = `http://localhost:3000/aprobar-rechazar?token=${token}&codigo=${nuevoCodigo}&tipo=personal`; // URL fija
 
       const html = `
         <!DOCTYPE html>
@@ -228,12 +227,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
               text-decoration: none;
               color: white;
               border-radius: 5px;
-            }
-            .actions .approve {
-              background-color: #28a745;
-            }
-            .actions .reject {
-              background-color: #dc3545;
+              background-color: #007bff; /* Color neutro para "Tomar Decisión" */
             }
             .footer {
               text-align: center;
@@ -276,8 +270,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
                 <tr><td>Motivo(s):</td><td>${motivosTexto}${otroMotivoTexto}</td></tr>
               </table>
               <div class="actions">
-                <a href="${approvalUrl}" class="approve">Aprobar</a>
-                <a href="${rejectionUrl}" class="reject">Rechazar</a>
+                <a href="${decisionUrl}">Tomar Decisión</a>
               </div>
             </div>
             <div class="footer">
