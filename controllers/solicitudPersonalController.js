@@ -34,6 +34,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
       "requisitos",
       "solicitado_por",
       "aprobado_por",
+      "otroMotivoTexto", // Añadimos este campo para incluirlo en el correo
     ];
     const solicitudFiltrada = Object.keys(solicitud)
       .filter((key) => camposPermitidos.includes(key))
@@ -148,16 +149,110 @@ export const enviarSolicitudPersonal = async (req, res) => {
     }
 
     if (destinatarios.length > 0) {
-      // Enviar notificación por correo
+      // Preparar el contenido del correo con diseño mejorado
+      const motivosTexto = solicitudFiltrada.motivo
+        ? solicitudFiltrada.motivo.join(", ")
+        : "No especificado";
+      const otroMotivoTexto =
+        solicitudFiltrada.motivo.includes("Otro motivo") &&
+        solicitudFiltrada.otroMotivoTexto
+          ? ` - ${solicitudFiltrada.otroMotivoTexto}`
+          : "";
+      const sugerenciaTexto =
+        solicitudFiltrada.sugerencia_persona === "si"
+          ? `Sí - Nombre: ${solicitudFiltrada.sugerencia_nombre || "No especificado"}, Cargo: ${
+              solicitudFiltrada.sugerencia_cargo || "No especificado"
+            }`
+          : "No";
+
       const html = `
-        <p><strong>📋 Nueva Solicitud de Personal</strong></p>
-        <p><strong>Código:</strong> ${nuevoCodigo}</p>
-        <p><strong>Cargo:</strong> ${solicitudFiltrada.cargo_solicitado}</p>
-        <p><strong>Sede:</strong> ${solicitudFiltrada.sede}</p>
-        <p><strong>Solicitado por:</strong> ${solicitudFiltrada.solicitado_por}</p>
-        <p><strong>Promoción interna:</strong> ${solicitudFiltrada.sugerencia_persona || "No especificado"}</p>
-        <p><strong>Fecha estimada de ingreso:</strong> ${solicitudFiltrada.fecha_ingreso || "N/A"}</p>
-        <p><strong>Motivo(s):</strong> ${solicitudFiltrada.motivo.join(", ")}</p>
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 20px auto;
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+              background-color: #28a745;
+              color: white;
+              padding: 20px;
+              text-align: center;
+            }
+            .content {
+              padding: 20px;
+              color: #333;
+            }
+            .content table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
+            }
+            .content td {
+              padding: 10px;
+              border-bottom: 1px solid #eee;
+            }
+            .content td:first-child {
+              font-weight: bold;
+              width: 30%;
+              color: #555;
+            }
+            .footer {
+              text-align: center;
+              padding: 10px;
+              background-color: #f4f4f4;
+              color: #777;
+              font-size: 12px;
+            }
+            @media (max-width: 600px) {
+              .container {
+                margin: 10px;
+              }
+              .content td {
+                display: block;
+                width: 100%;
+              }
+              .content td:first-child {
+                width: 100%;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>📋 Nueva Solicitud de Personal</h2>
+            </div>
+            <div class="content">
+              <table>
+                <tr><td>Código:</td><td>${nuevoCodigo}</td></tr>
+                <tr><td>Cargo:</td><td>${solicitudFiltrada.cargo_solicitado}</td></tr>
+                <tr><td>Sede:</td><td>${solicitudFiltrada.sede}</td></tr>
+                <tr><td>Solicitado por:</td><td>${solicitudFiltrada.solicitado_por}</td></tr>
+                <tr><td>Sugerencias:</td><td>${sugerenciaTexto}</td></tr>
+                <tr><td>Fecha estimada de ingreso:</td><td>${solicitudFiltrada.fecha_ingreso || "N/A"}</td></tr>
+                <tr><td>Motivo(s):</td><td>${motivosTexto}${otroMotivoTexto}</td></tr>
+              </table>
+            </div>
+            <div class="footer">
+              <p>© 2025 Merkahorro. Todos los derechos reservados.</p>
+            </div>
+          </div>
+        </body>
+        </html>
       `;
 
       for (const to of destinatarios) {
