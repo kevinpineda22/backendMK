@@ -169,7 +169,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
             }`
           : "No";
 
-      const decisionUrl = `http://localhost:3000/aprobar-rechazar?token=${token}&codigo=${nuevoCodigo}&tipo=personal`; // URL fija
+      const decisionUrl = `https://www.merkahorro.com/aprobar-rechazar?token=${token}&codigo=${nuevoCodigo}&tipo=personal`; // URL fija
 
       const html = `
         <!DOCTYPE html>
