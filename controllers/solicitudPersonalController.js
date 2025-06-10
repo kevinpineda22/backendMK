@@ -227,7 +227,7 @@ export const enviarSolicitudPersonal = async (req, res) => {
               text-decoration: none;
               color: white;
               border-radius: 5px;
-              background-color: #007bff; /* Color neutro para "Tomar Decisión" */
+              background-color: #210d65; /* Color neutro para "Tomar Decisión" */
             }
             .footer {
               text-align: center;
