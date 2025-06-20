@@ -2,11 +2,17 @@ import nodemailer from 'nodemailer';
 
 // Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Puedes cambiar a otro servicio como Outlook, Yahoo, etc.
+  host: 'smtp.office365.com',
+  port: 587,        // STARTTLS
+  secure: false,    // false = utiliza STARTTLS, true = SSL/TLS en el connect
   auth: {
-    user: process.env.EMAIL_USER, // Ejemplo: gastosmerkahorro@gmail.com
-    pass: process.env.EMAIL_PASS, // Contraseña o App Password de Gmail
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
+  tls: {
+    // Recomendado por Office365 para evitar errores de certificados
+    ciphers: 'TLSv1.2'
+  }
 });
 
 // Function to send email
