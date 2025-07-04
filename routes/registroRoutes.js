@@ -18,6 +18,7 @@ import {
   updateCodigoRequisicion,
 } from "../controllers/registroController.js";
 
+
 // IMPORTANTE: NO IMPORTAR empleadosController.js NI solicitudPersonalController.js AQUÍ
 // Porque no los estamos usando en este alcance simplificado.
 
