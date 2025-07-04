@@ -1,87 +1,107 @@
 import { Router } from "express";
+
+// --- Importaciones de CONTROLADORES ---
+// 1. registroController (funciones generales de postulaciones y archivos)
 import {
   getRoot,
   getPostulaciones,
   updateCheckBD,
   updateObservacionBD,
   updateEstado,
-  getStats, // Usado en Dashboard de Postulaciones (si lo tienes)
-  getDetails, // Usado para buscar postulaciones (si lo tienes)
+  getStats,
+  getDetails,
   descargarArchivo,
-  enviarFormulario, // Para el formulario Trabaja.jsx
+  enviarFormulario,
   subirDocumento,
   subirDocumentosMultiples,
   eliminarDocumento,
-  upload, // Multer middleware
-  sendEmail, // Función genérica de envío de email
+  upload, // multer middleware
+  sendEmail, // general sendEmail function
   registrarHistorial,
   updateCodigoRequisicion,
 } from "../controllers/registroController.js";
 
-
-// IMPORTANTE: NO IMPORTAR empleadosController.js NI solicitudPersonalController.js AQUÍ
-// Porque no los estamos usando en este alcance simplificado.
-
-// Importar el controlador de entrevistas (este SÍ es necesario)
+// 2. solicitudPersonalController (funciones de solicitud de personal)
+// Si no estás usando estas funcionalidades en este momento y quieres un backend mínimo,
+// puedes comentar estas líneas y sus rutas correspondientes.
+// Por ahora, las incluyo como estaban en tu código para completitud.
 import {
-    checkPostulanteForInterview,
-    getAvailableInterviewDays,
-    reserveInterviewSlot,
-    // Las funciones de gestión de RRHH las dejamos comentadas por ahora,
-    // ya que no son parte de "agendar la entrevista" por el postulante.
-    // manageInterviewDays,
-    // getAllInterviewDays,
-    // deleteInterviewDay,
-    // getInterviewReservations,
-    // updateInterviewReservationStatus
+  enviarSolicitudPersonal,
+  obtenerSolicitudesPersonal,
+  procesarAprobacion,
+} from "../controllers/solicitudPersonalController.js";
+
+// 3. entrevistasController (funciones de agendamiento de entrevistas)
+// ESTE ES EL NUEVO Y CRÍTICO CONTROLADOR PARA EL AGENDAMIENTO
+import {
+  checkPostulanteForInterview,
+  getAvailableInterviewDays,
+  reserveInterviewSlot,
+  cancelInterviewReservation, // <-- ¡NUEVA FUNCIÓN IMPORTADA!
+  // Funciones de gestión de RRHH (comentadas por ahora, se activarán después)
+  // manageInterviewDays,
+  // getAllInterviewDays,
+  // deleteInterviewDay,
+  // getInterviewReservations,
+  // updateInterviewReservationStatus
 } from "../controllers/entrevistasController.js"; 
 
 
+// --- Inicialización del Router ---
 const router = Router();
 
-// Middleware de autenticación (placeholder, no se usa para rutas de postulante)
+// --- Middlewares (Ejemplo - DEBES IMPLEMENTAR LA LÓGICA REAL PARA PRODUCCIÓN) ---
 const authenticate = (req, res, next) => {
+    // Si tu aplicación no tiene un sistema de autenticación de backend (JWT, sesiones),
+    // y solo dependes de la protección del frontend, puedes dejarlo así para pruebas.
+    // En producción, TODAS las rutas que requieran un usuario logueado DEBEN tener autenticación real.
     next(); 
 };
 
-// --- Rutas Básicas ---
+
+// --- DEFINICIÓN DE RUTAS ---
+
+// Rutas básicas
 router.get("/", getRoot);
 
-// --- Rutas de Postulaciones (desde el formulario Trabaja.jsx) ---
-router.post("/api/enviar", enviarFormulario); // Envío del formulario de postulación
-router.get("/api/postulaciones", getPostulaciones); // Para PostulacionesTable.jsx
-router.get("/api/postulaciones/stats", getStats); // Para DashboardPostulaciones.jsx
-router.get("/api/postulaciones/details", getDetails); // Para PostulacionesTable.jsx (filtro)
-router.patch("/api/postulaciones/:id/check", updateCheckBD); // Para PostulacionesTable.jsx
-router.patch("/api/postulaciones/:id/observacion", updateObservacionBD); // Para PostulacionesTable.jsx
-router.patch("/api/postulaciones/:id/codigo-requisicion", updateCodigoRequisicion); // Para PostulacionesTable.jsx
-router.put("/estado/:id", updateEstado); // Para PostulacionesTable.jsx
+// Rutas de Postulaciones (para el frontend PostulacionesTable.jsx)
+router.get("/api/postulaciones", getPostulaciones);
+router.patch("/api/postulaciones/:id/check", updateCheckBD);
+router.patch("/api/postulaciones/:id/observacion", updateObservacionBD);
+router.patch("/api/postulaciones/:id/codigo-requisicion", updateCodigoRequisicion);
+router.get("/api/postulaciones/stats", getStats); // Para DashboardPostulaciones
+router.get("/api/postulaciones/details", getDetails);
 
-// --- Rutas de Documentos (para el PanelPostulante o similares) ---
+// Rutas de Descarga y Subida de Archivos
 router.get("/api/descargar/*", descargarArchivo); // Para descargar cualquier archivo del storage
 router.post("/api/documentos", upload.single("archivo"), subirDocumento); // Subir un solo documento
 router.post("/api/documentos/multiple", upload.array("archivos"), subirDocumentosMultiples); // Subir múltiples documentos
 router.delete("/api/documentos/:id", eliminarDocumento); // Eliminar un documento
 
-// --- Rutas de Historial (para PostulacionesTable o PanelPostulante) ---
+// Rutas de Formulario de Postulación y Historial
+router.post("/api/enviar", enviarFormulario); // Envío del formulario de Trabaja.jsx
 router.post("/api/historial", registrarHistorial); // Registro en historial_postulacion
 
-// --- Rutas de Envío de Correos (genérica, usada por el backend para notificaciones) ---
+// Rutas de Actualización de Estado de Postulaciones
+router.put("/estado/:id", updateEstado); // Actualizar estado de una postulación
+
+// Rutas de Envío de Correos (genérica, usada por el backend para notificaciones)
 router.post("/api/send-email", sendEmail);
 
 
-// --- RUTAS DE AGENDAMIENTO DE ENTREVISTAS (NUEVAS y ESPECÍFICAS PARA EL POSTULANTE) ---
-// 1. Verificar si una cédula existe y su estado
+// Rutas de SOLICITUD DE PERSONAL (Si las estás usando)
+router.post("/api/solicitud-personal", enviarSolicitudPersonal);
+router.get("/api/solicitudes-personal", obtenerSolicitudesPersonal);
+router.post("/api/procesar-aprobacion", procesarAprobacion);
+
+
+// --- RUTAS DE AGENDAMIENTO DE ENTREVISTAS ---
+// Estas rutas no requieren autenticación en este flujo actual de postulantes
 router.get("/api/entrevistas/check-postulante/:numeroDocumento", checkPostulanteForInterview);
-// 2. Obtener los días de entrevista disponibles
 router.get("/api/entrevistas/disponibilidad", getAvailableInterviewDays);
-// 3. Registrar la reserva de entrevista
 router.post("/api/entrevistas/reservar", reserveInterviewSlot);
-
-// Las rutas de gestión de RRHH para empleados y días de entrevista se mantienen
-// fuera de este `registroRoutes.js` si queremos que este archivo sea solo para
-// el flujo de postulantes y entrevistas por parte del postulante.
-// Si las incluiste en la versión anterior de este archivo, REMUÉVELAS.
+router.delete("/api/entrevistas/cancelar/:id", cancelInterviewReservation); // <-- ¡NUEVA RUTA DELETE!
 
 
+// --- Exportar el Router ---
 export default router;
