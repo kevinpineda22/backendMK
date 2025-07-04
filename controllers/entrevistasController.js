@@ -42,7 +42,7 @@ const checkPostulanteForInterview = async (req, res) => {
             dia_entrevista:dias_entrevista(id, fecha, cupos_totales, cupos_disponibles, estado)
         `)
         .eq('postulacion_id', postulacion.id)
-        .single(); // Esperamos un único registro, si existe
+        .single(); 
 
     if (resError) {
         if (resError.code === 'PGRST116') { 
@@ -57,13 +57,18 @@ const checkPostulanteForInterview = async (req, res) => {
     // Si existingReservationDetails existe (es decir, SÍ encontró una reserva),
     // devolvemos esa información y permitimos la visualización/cancelación.
     if (existingReservationDetails) {
+        console.log("Existing reservation found. Sending to frontend:", {
+            postulante: postulacion,
+            reserva: existingReservationDetails
+        });
+
         return res.status(200).json({ 
             success: true, 
             message: `Ya tienes una entrevista agendada. Tu ficho de ingreso es: ${existingReservationDetails.fich_entrevista}. Revisa tu correo.`,
             status: 'has_reservation', // Indicador para el frontend
             data: {
-                postulante: postulacion, // Datos del postulante
-                reserva: existingReservationDetails // Detalles completos de la reserva
+                postulante: postulacion, 
+                reserva: existingReservationDetails 
             }
         });
     }
@@ -292,7 +297,6 @@ const cancelInterviewReservation = async (req, res) => {
 
 
 // --- Funciones para Gestión Humana (RRHH) - (Serán desarrolladas en fases posteriores) ---
-// NOTA: Estas funciones están definidas sin 'export' individual.
 const manageInterviewDays = async (req, res) => {
     res.status(501).json({ success: false, message: "Funcionalidad manageInterviewDays no implementada." });
 };
@@ -314,14 +318,11 @@ const updateInterviewReservationStatus = async (req, res) => {
 };
 
 // --- EXPORTACIÓN FINAL DE TODAS LAS FUNCIONES ---
-// Asegúrate de que los nombres de las funciones aquí coincidan EXACTAMENTE
-// con cómo están definidas arriba y cómo las importas en registroRoutes.js
 export {
     checkPostulanteForInterview,
     getAvailableInterviewDays,
     reserveInterviewSlot,
     cancelInterviewReservation,
-    // Asegúrate de que estas funciones también estén aquí si las vas a usar en registroRoutes.js
     manageInterviewDays, 
     getAllInterviewDays,
     deleteInterviewDay,
