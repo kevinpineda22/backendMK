@@ -32,7 +32,7 @@ export const checkPostulanteForInterview = async (req, res) => {
       return res.status(404).json({ success: false, message: "Postulación no encontrada con este documento. Por favor, asegúrate de haber completado el formulario de postulación." });
     }
 
-    // Verificar si ya tiene una reserva activa para evitar múltiples reservas
+    // Verificar si ya tiene una reserva activa para evitar múltiples reservas para la misma postulación
     const { data: existingReservation, error: resError } = await supabase
         .from('reservas_entrevista')
         .select('id, fich_entrevista')
@@ -129,7 +129,7 @@ export const reserveInterviewSlot = async (req, res) => {
     if (reservaError) {
         // Manejar el caso de violación de unicidad (ej. ficho duplicado, aunque es muy raro)
         if (reservaError.code === '23505') { 
-            return res.status(409).json({ success: false, message: "Conflicto en la reserva. Por favor, intenta de nuevo." });
+            return res.status(409).json({ success: false, message: "Conflicto en la reserva. Por favor, intenta de nuevo (ficho duplicado)." });
         }
         console.error("Error Supabase al registrar la reserva:", reservaError);
         return handleError(res, "Error al registrar la reserva", reservaError);
@@ -151,12 +151,12 @@ export const reserveInterviewSlot = async (req, res) => {
       .from('Postulaciones')
       .update({ estado: 'Entrevista' })
       .eq('id', postulacion_id)
-      .select('nombreApellido, correo, numeroDocumento') // Seleccionar datos para el correo de confirmación
+      .select('nombreApellido, correo, numeroDocumento') // Seleccionar datos relevantes para el correo
       .single(); // Esperamos que se actualice un único registro
 
     if (updatePostulacionError) {
       console.error("Error Supabase al actualizar estado del postulante:", updatePostulacionError);
-      // Otro error secundario. La reserva se hizo, pero el estado del postulante no cambió.
+      // Si falla, la reserva se hizo, pero el estado del postulante no cambió.
     }
 
     // 6. Enviar correo al postulante con la confirmación de la cita
@@ -174,18 +174,12 @@ export const reserveInterviewSlot = async (req, res) => {
                     <h3 style="color: #210d65; margin-top: 0; font-size: 18px;">Detalles de tu Entrevista:</h3>
                     <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(diaEntrevista.fecha).toLocaleDateString('es-CO')}</p>
                     <p style="margin: 5px 0;"><strong>Hora:</strong> ${hora_reserva}</p>
-                    <p style="margin: 5px 0;"><strong>Lugar:</strong> Calle 50 No. 46-36 Edificio Furatena piso 14, Medellín - Colombia</p>
+                    <p style="margin: 5px 0;"><strong>Lugar:</strong> Calle 52 #52-27 Copacabana, Antioquia, Colombia</p>
                     <p style="margin: 5px 0;"><strong>Ficho de Ingreso:</strong> <span style="font-size: 20px; font-weight: bold; color: #89dc00;">${fich_entrevista}</span></p>
                 </div>
 
-                <p><strong>¿Qué debes traer?</strong></p>
-                <ul style="list-style-type: disc; margin: 0; padding-left: 20px;">
-                    <li>Documento de identidad original.</li>
-                    <li>Muestra coprológica.</li>
-                    <li>Uñas desmaquilladas (si aplica).</li>
-                </ul>
-
-                <p style="margin-top: 20px;">Por favor, llega unos minutos antes de tu hora programada. Presenta este correo y tu documento de identidad en la entrada. ¡Te esperamos!</p>
+                <p style="margin-top: 20px;">No necesitas traer nada en especial para tu entrevista.</p>
+                <p style="margin-top: 20px;">Por favor, llega unos minutos antes de tu hora programada. Presenta este correo y tu documento de identidad original en la entrada. ¡Te esperamos!</p>
             </div>
             <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 12px; color: #777; border-radius: 0 0 8px 8px;">
                 <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
@@ -195,55 +189,48 @@ export const reserveInterviewSlot = async (req, res) => {
       `;
 
       await sendEmailService({
-        to: postulacionActualizada.correo, // El correo del postulante
+        to: postulacionActualizada.correo, // Correo del postulante
         subject: `Confirmación de Cita de Entrevista Merkahorro - Ficho: ${fich_entrevista}`,
         html: emailContent,
       });
     }
 
-    // Respuesta final al frontend
     res.status(201).json({ 
       success: true, 
       message: "Espacio de entrevista reservado exitosamente.", 
-      data: reservaData[0], // Datos de la reserva creada
-      fich_entrevista // Incluye el ficho para mostrar en el frontend
+      data: reservaData[0], 
+      fich_entrevista 
     });
 
   } catch (err) {
-    // Si hay un error general en el proceso de reserva, lo manejamos y respondemos al frontend
     handleError(res, "Error al reservar espacio de entrevista", err);
   }
 };
-
 
 // --- Funciones para Gestión Humana (RRHH) - (Serán desarrolladas en fases posteriores) ---
 
 // Crear o Actualizar Días de Entrevista (para RRHH)
 export const manageInterviewDays = async (req, res) => {
-    // Lógica para que RRHH defina días y cupos
+    // Estas funciones no están implementadas en esta fase
     res.status(501).json({ success: false, message: "Funcionalidad manageInterviewDays no implementada." });
 };
 
 // Obtener todos los días de entrevista (para RRHH)
 export const getAllInterviewDays = async (req, res) => {
-    // Lógica para que RRHH vea todos los días agendados
     res.status(501).json({ success: false, message: "Funcionalidad getAllInterviewDays no implementada." });
 };
 
 // Eliminar un día de entrevista (para RRHH)
 export const deleteInterviewDay = async (req, res) => {
-    // Lógica para que RRHH elimine un día
     res.status(501).json({ success: false, message: "Funcionalidad deleteInterviewDay no implementada." });
 };
 
 // Obtener reservas de entrevista (para RRHH)
 export const getInterviewReservations = async (req, res) => {
-    // Lógica para que RRHH vea todas las reservas
     res.status(501).json({ success: false, message: "Funcionalidad getInterviewReservations no implementada." });
 };
 
 // Actualizar estado de una reserva (confirmada, asistió) (para RRHH)
 export const updateInterviewReservationStatus = async (req, res) => {
-    // Lógica para que RRHH actualice el estado de una reserva
     res.status(501).json({ success: false, message: "Funcionalidad updateInterviewReservationStatus no implementada." });
 };
