@@ -1,8 +1,8 @@
 import supabase from '../config/supabaseClient.js';
-import { handleError } from '../utils/errorHandler.js'; 
-import { getCurrentColombiaTimeISO } from '../utils/timeUtils.js'; 
-import { sendEmail as sendEmailService } from "./emailService.js"; 
-import crypto from 'crypto'; 
+import { handleError } from '../utils/errorHandler.js'; // Asegúrate de que este archivo exista
+import { getCurrentColombiaTimeISO } from '../utils/timeUtils.js'; // Asegúrate de que este archivo exista
+import { sendEmail as sendEmailService } from "./emailService.js"; // Asegúrate de que este servicio exista y esté configurado
+import crypto from 'crypto'; // Módulo nativo de Node.js para generar fichos aleatorios
 
 // --- Funciones para Postulantes (Flujo de Agendamiento) ---
 
@@ -19,7 +19,7 @@ const checkPostulanteForInterview = async (req, res) => {
       .from('Postulaciones')
       .select('id, nombreApellido, correo, estado, numeroDocumento')
       .eq('numeroDocumento', numeroDocumento)
-      .maybeSingle();
+      .maybeSingle(); // Usa maybeSingle para obtener 0 o 1 resultado sin lanzar error si no hay coincidencias
 
     if (error) {
         console.error("Error Supabase en checkPostulanteForInterview:", error);
@@ -42,7 +42,7 @@ const checkPostulanteForInterview = async (req, res) => {
             dia_entrevista:dias_entrevista(id, fecha, cupos_totales, cupos_disponibles, estado)
         `)
         .eq('postulacion_id', postulacion.id)
-        .single(); 
+        .single(); // Usamos single() aquí, si no hay resultado, resError.code será 'PGRST116'
 
     if (resError) {
         if (resError.code === 'PGRST116') { 
@@ -68,7 +68,7 @@ const checkPostulanteForInterview = async (req, res) => {
             status: 'has_reservation', // Indicador para el frontend
             data: {
                 postulante: postulacion, 
-                reserva: existingReservationDetails 
+                reserva: existingReservationDetails // Esto ahora DEBE incluir el objeto dia_entrevista
             }
         });
     }
@@ -229,7 +229,7 @@ const reserveInterviewSlot = async (req, res) => {
 };
 
 // --- NUEVA FUNCIÓN: Cancelar Reserva de Entrevista ---
-const cancelInterviewReservation = async (req, res) => {
+export const cancelInterviewReservation = async (req, res) => { // Asegúrate de que este export esté aquí
   try {
     const { id } = req.params; // ID de la reserva a cancelar
     const { postulacion_id } = req.body; // Postulacion_id para mayor seguridad o para revertir estado
@@ -297,23 +297,23 @@ const cancelInterviewReservation = async (req, res) => {
 
 
 // --- Funciones para Gestión Humana (RRHH) - (Serán desarrolladas en fases posteriores) ---
-const manageInterviewDays = async (req, res) => {
+export const manageInterviewDays = async (req, res) => {
     res.status(501).json({ success: false, message: "Funcionalidad manageInterviewDays no implementada." });
 };
 
-const getAllInterviewDays = async (req, res) => {
+export const getAllInterviewDays = async (req, res) => {
     res.status(501).json({ success: false, message: "Funcionalidad getAllInterviewDays no implementada." });
 };
 
-const deleteInterviewDay = async (req, res) => {
+export const deleteInterviewDay = async (req, res) => {
     res.status(501).json({ success: false, message: "Funcionalidad deleteInterviewDay no implementada." });
 };
 
-const getInterviewReservations = async (req, res) => {
+export const getInterviewReservations = async (req, res) => {
     res.status(501).json({ success: false, message: "Funcionalidad getInterviewReservations no implementada." });
 };
 
-const updateInterviewReservationStatus = async (req, res) => {
+export const updateInterviewReservationStatus = async (req, res) => {
     res.status(501).json({ success: false, message: "Funcionalidad updateInterviewReservationStatus no implementada." });
 };
 
