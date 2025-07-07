@@ -36,10 +36,11 @@ import {
   getAvailableInterviewDays,
   reserveInterviewSlot,
   cancelInterviewReservation,
-  createInterviewDay,          // <--- ¡NUEVA FUNCIÓN IMPORTADA!
-  getAllInterviewDaysAdmin,    // <--- ¡NUEVA FUNCIÓN IMPORTADA!
-  getInterviewDayDetails,      // <--- ¡NUEVA FUNCIÓN IMPORTADA!
-  deleteInterviewDay,          // <--- ¡FUNCIÓN ACTUALIZADA IMPORTADA!
+  createInterviewDay,
+  getAllInterviewDaysAdmin,
+  getInterviewDayDetails,
+  deleteInterviewDay,
+  updateInterviewAttendanceStatus, // <--- ¡NUEVA FUNCIÓN IMPORTADA!
 } from "../controllers/entrevistasController.js";
 
 
@@ -106,6 +107,7 @@ router.post("/api/admin/entrevistas/day", authenticate, createInterviewDay); // 
 router.get("/api/admin/entrevistas/days", authenticate, getAllInterviewDaysAdmin); // Obtener todos los días con sus cupos
 router.get("/api/admin/entrevistas/day/:id", authenticate, getInterviewDayDetails); // Obtener detalles de un día y sus reservas
 router.delete("/api/admin/entrevistas/day/:id", authenticate, deleteInterviewDay); // Eliminar un día y sus reservas
+router.patch("/api/admin/entrevistas/reserva/:reservaId/status", authenticate, updateInterviewAttendanceStatus); // <--- ¡NUEVA RUTA!
 
 
 // --- Exportar el Router ---
