@@ -347,6 +347,9 @@ const getInterviewDayDetails = async (req, res) => {
     try {
         const { id } = req.params; // ID del día de entrevista
 
+        // Se ha eliminado el parámetro 'search' de req.query
+        // y la lógica condicional para el buscador.
+        // La cadena de select se ha corregido para eliminar el comentario.
         const { data: dayDetails, error: dayError } = await supabase
             .from('dias_entrevista')
             .select(`
@@ -359,16 +362,22 @@ const getInterviewDayDetails = async (req, res) => {
                     id,
                     fich_entrevista,
                     hora_reserva,
-                    estado_asistencia, -- <--- ¡NUEVO CAMPO!
+                    estado_asistencia,
                     postulacion:Postulaciones (nombreApellido, numeroDocumento, correo)
                 )
             `)
             .eq('id', id)
             .single();
 
+
         if (dayError) {
             console.error("Error Supabase al obtener detalles del día de entrevista:", dayError);
-            return handleError(res, "Día de entrevista no encontrado.", dayError, 404);
+            // Manejar específicamente el caso de no encontrar el día
+            if (dayError.code === 'PGRST116') { // No rows found
+                return handleError(res, "Día de entrevista no encontrado.", dayError, 404);
+            }
+
+            return handleError(res, "Error al obtener detalles del día.", dayError, 500);
         }
 
         res.status(200).json({ success: true, data: dayDetails });
@@ -425,7 +434,7 @@ const deleteInterviewDay = async (req, res) => {
     }
 };
 
-// --- NUEVA FUNCIÓN PARA ACTUALIZAR ESTADO DE ASISTENCIA ---
+// --- FUNCIÓN PARA ACTUALIZAR ESTADO DE ASISTENCIA ---
 const updateInterviewAttendanceStatus = async (req, res) => {
     try {
         const { reservaId } = req.params;
@@ -465,13 +474,13 @@ const updateInterviewAttendanceStatus = async (req, res) => {
 
 // --- EXPORTACIÓN FINAL DE TODAS LAS FUNCIONES ---
 export {
-    checkPostulanteForInterview,
-    getAvailableInterviewDays,
-    reserveInterviewSlot,
-    cancelInterviewReservation,
-    createInterviewDay,
-    getAllInterviewDaysAdmin,
-    getInterviewDayDetails,
-    deleteInterviewDay,
-    updateInterviewAttendanceStatus, // <--- ¡NUEVA FUNCIÓN EXPORTADA!
+    checkPostulanteForInterview,
+    getAvailableInterviewDays,
+    reserveInterviewSlot,
+    cancelInterviewReservation,
+    createInterviewDay,
+    getAllInterviewDaysAdmin,
+    getInterviewDayDetails,
+    deleteInterviewDay,
+    updateInterviewAttendanceStatus,
 };
