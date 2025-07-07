@@ -1,3 +1,5 @@
+// registroRoutes.js
+
 import { Router } from "express";
 
 // --- Importaciones de CONTROLADORES ---
@@ -22,9 +24,6 @@ import {
 } from "../controllers/registroController.js";
 
 // 2. solicitudPersonalController (funciones de solicitud de personal)
-// Si no estás usando estas funcionalidades en este momento y quieres un backend mínimo,
-// puedes comentar estas líneas y sus rutas correspondientes.
-// Por ahora, las incluyo como estaban en tu código para completitud.
 import {
   enviarSolicitudPersonal,
   obtenerSolicitudesPersonal,
@@ -32,19 +31,16 @@ import {
 } from "../controllers/solicitudPersonalController.js";
 
 // 3. entrevistasController (funciones de agendamiento de entrevistas)
-// ESTE ES EL NUEVO Y CRÍTICO CONTROLADOR PARA EL AGENDAMIENTO
 import {
   checkPostulanteForInterview,
   getAvailableInterviewDays,
   reserveInterviewSlot,
-  cancelInterviewReservation, // <-- ¡NUEVA FUNCIÓN IMPORTADA!
-  // Funciones de gestión de RRHH (comentadas por ahora, se activarán después)
-  // manageInterviewDays,
-  // getAllInterviewDays,
-  // deleteInterviewDay,
-  // getInterviewReservations,
-  // updateInterviewReservationStatus
-} from "../controllers/entrevistasController.js"; 
+  cancelInterviewReservation,
+  createInterviewDay,          // <--- ¡NUEVA FUNCIÓN IMPORTADA!
+  getAllInterviewDaysAdmin,    // <--- ¡NUEVA FUNCIÓN IMPORTADA!
+  getInterviewDayDetails,      // <--- ¡NUEVA FUNCIÓN IMPORTADA!
+  deleteInterviewDay,          // <--- ¡FUNCIÓN ACTUALIZADA IMPORTADA!
+} from "../controllers/entrevistasController.js";
 
 
 // --- Inicialización del Router ---
@@ -52,10 +48,11 @@ const router = Router();
 
 // --- Middlewares (Ejemplo - DEBES IMPLEMENTAR LA LÓGICA REAL PARA PRODUCCIÓN) ---
 const authenticate = (req, res, next) => {
-    // Si tu aplicación no tiene un sistema de autenticación de backend (JWT, sesiones),
-    // y solo dependes de la protección del frontend, puedes dejarlo así para pruebas.
-    // En producción, TODAS las rutas que requieran un usuario logueado DEBEN tener autenticación real.
-    next(); 
+    // ESTO ES SOLO UN MARCADOR DE POSICIÓN.
+    // Para producción, DEBES implementar una autenticación real (JWT, sesiones, etc.)
+    // para proteger las rutas de administración.
+    console.log("Middleware de autenticación: Usuario autenticado (simulado)");
+    next();
 };
 
 
@@ -89,18 +86,26 @@ router.put("/estado/:id", updateEstado); // Actualizar estado de una postulació
 router.post("/api/send-email", sendEmail);
 
 
-// Rutas de SOLICITUD DE PERSONAL (Si las estás usando)
+// Rutas de SOLICITUD DE PERSONAL
 router.post("/api/solicitud-personal", enviarSolicitudPersonal);
 router.get("/api/solicitudes-personal", obtenerSolicitudesPersonal);
 router.post("/api/procesar-aprobacion", procesarAprobacion);
 
 
-// --- RUTAS DE AGENDAMIENTO DE ENTREVISTAS ---
+// --- RUTAS DE AGENDAMIENTO DE ENTREVISTAS (Públicas para postulantes) ---
 // Estas rutas no requieren autenticación en este flujo actual de postulantes
 router.get("/api/entrevistas/check-postulante/:numeroDocumento", checkPostulanteForInterview);
 router.get("/api/entrevistas/disponibilidad", getAvailableInterviewDays);
 router.post("/api/entrevistas/reservar", reserveInterviewSlot);
-router.delete("/api/entrevistas/cancelar/:id", cancelInterviewReservation); // <-- ¡NUEVA RUTA DELETE!
+router.delete("/api/entrevistas/cancelar/:id", cancelInterviewReservation);
+
+
+// --- NUEVAS RUTAS DE AGENDAMIENTO PARA ADMINISTRACIÓN (RRHH) ---
+// Estas rutas DEBERÍAN estar protegidas por un middleware de autenticación REAL.
+router.post("/api/admin/entrevistas/day", authenticate, createInterviewDay); // Crear un nuevo día disponible
+router.get("/api/admin/entrevistas/days", authenticate, getAllInterviewDaysAdmin); // Obtener todos los días con sus cupos
+router.get("/api/admin/entrevistas/day/:id", authenticate, getInterviewDayDetails); // Obtener detalles de un día y sus reservas
+router.delete("/api/admin/entrevistas/day/:id", authenticate, deleteInterviewDay); // Eliminar un día y sus reservas
 
 
 // --- Exportar el Router ---

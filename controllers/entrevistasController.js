@@ -1,12 +1,13 @@
+// entrevistasController.js
+
 import supabase from '../config/supabaseClient.js';
-import { handleError } from '../utils/errorHandler.js'; 
-import { getCurrentColombiaTimeISO } from '../utils/timeUtils.js'; 
-import { sendEmail as sendEmailService } from "./emailService.js"; 
-import crypto from 'crypto'; 
+import { handleError } from '../utils/errorHandler.js';
+import { getCurrentColombiaTimeISO } from '../utils/timeUtils.js';
+import { sendEmail as sendEmailService } from "./emailService.js";
+import crypto from 'crypto';
 
 // --- Funciones para Postulantes (Flujo de Agendamiento) ---
 
-// NOTA: ELIMINAR 'export' de las funciones que se exportan al final.
 const checkPostulanteForInterview = async (req, res) => {
   try {
     const { numeroDocumento } = req.params;
@@ -40,30 +41,30 @@ const checkPostulanteForInterview = async (req, res) => {
             dia_entrevista:dias_entrevista(id, fecha, cupos_totales, cupos_disponibles, estado)
         `)
         .eq('postulacion_id', postulacion.id)
-        .single(); 
+        .single();
 
     if (resError) {
-        if (resError.code === 'PGRST116') { 
+        if (resError.code === 'PGRST116') {
             // No rows found, significa que no tiene reserva existente, lo cual es OK.
         } else {
             console.error("Error Supabase al verificar reserva existente:", resError);
             return handleError(res, "Error al verificar reserva existente", resError);
         }
     }
-    
+
     if (existingReservationDetails) {
         console.log("Existing reservation found. Sending to frontend:", {
             postulante: postulacion,
             reserva: existingReservationDetails
         });
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: `Ya tienes una entrevista agendada. Tu ficho de ingreso es: ${existingReservationDetails.fich_entrevista}. Revisa tu correo.`,
-            status: 'has_reservation', 
+            status: 'has_reservation',
             data: {
-                postulante: postulacion, 
-                reserva: existingReservationDetails 
+                postulante: postulacion,
+                reserva: existingReservationDetails
             }
         });
     }
@@ -79,22 +80,21 @@ const checkPostulanteForInterview = async (req, res) => {
   }
 };
 
-// NOTA: Eliminar 'export' aquí
 const getAvailableInterviewDays = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('dias_entrevista')
-      .select('*') 
-      .gte('fecha', getCurrentColombiaTimeISO().split('T')[0]) 
-      .gt('cupos_disponibles', 0) 
-      .eq('estado', 'Activo') 
-      .order('fecha', { ascending: true }); 
+      .select('*')
+      .gte('fecha', getCurrentColombiaTimeISO().split('T')[0])
+      .gt('cupos_disponibles', 0)
+      .eq('estado', 'Activo')
+      .order('fecha', { ascending: true });
 
     if (error) {
         console.error("Error Supabase al obtener días disponibles:", error);
         return handleError(res, "Error al obtener días de entrevista", error);
     }
-    
+
     res.status(200).json({ success: true, data: data || [] });
 
   } catch (err) {
@@ -102,7 +102,6 @@ const getAvailableInterviewDays = async (req, res) => {
   }
 };
 
-// NOTA: Eliminar 'export' aquí
 const reserveInterviewSlot = async (req, res) => {
   try {
     const { postulacion_id, dia_entrevista_id, hora_reserva } = req.body;
@@ -115,7 +114,7 @@ const reserveInterviewSlot = async (req, res) => {
       .from('dias_entrevista')
       .select('cupos_disponibles, estado, fecha')
       .eq('id', dia_entrevista_id)
-      .single(); 
+      .single();
 
     if (diaError) {
         console.error("Error Supabase al verificar día de entrevista:", diaError);
@@ -125,23 +124,23 @@ const reserveInterviewSlot = async (req, res) => {
       return res.status(400).json({ success: false, message: "No hay cupos disponibles para este día o el día no está activo." });
     }
 
-    const fich_entrevista = crypto.randomBytes(4).toString('hex').toUpperCase(); 
-    
+    const fich_entrevista = crypto.randomBytes(4).toString('hex').toUpperCase();
+
     const { data: reservaData, error: reservaError } = await supabase
       .from('reservas_entrevista')
       .insert([
-        { 
-          postulacion_id, 
-          dia_entrevista_id, 
-          hora_reserva, 
+        {
+          postulacion_id,
+          dia_entrevista_id,
+          hora_reserva,
           fich_entrevista,
           creado_en: getCurrentColombiaTimeISO()
         }
       ])
-      .select(); 
+      .select();
 
     if (reservaError) {
-        if (reservaError.code === '23505') { 
+        if (reservaError.code === '23505') {
             return res.status(409).json({ success: false, message: "Conflicto en la reserva. Por favor, intenta de nuevo (ficho duplicado)." });
         }
         console.error("Error Supabase al registrar la reserva:", reservaError);
@@ -161,7 +160,7 @@ const reserveInterviewSlot = async (req, res) => {
       .from('Postulaciones')
       .update({ estado: 'Entrevista' })
       .eq('id', postulacion_id)
-      .select('nombreApellido, correo, numeroDocumento') 
+      .select('nombreApellido, correo, numeroDocumento')
       .single();
 
     if (updatePostulacionError) {
@@ -177,7 +176,7 @@ const reserveInterviewSlot = async (req, res) => {
             <div style="padding: 30px;">
                 <p>Estimado/a <strong>${postulacionActualizada.nombreApellido}</strong>,</p>
                 <p>¡Gracias por tu interés en ser parte de nuestro equipo! Nos complace informarte que tu entrevista ha sido agendada con éxito.</p>
-                
+
                 <div style="background-color: #f8f9fa; border-left: 4px solid #89dc00; padding: 15px; margin: 20px 0; border-radius: 6px;">
                     <h3 style="color: #210d65; margin-top: 0; font-size: 18px;">Detalles de tu Entrevista:</h3>
                     <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(diaEntrevista.fecha).toLocaleDateString('es-CO')}</p>
@@ -203,11 +202,11 @@ const reserveInterviewSlot = async (req, res) => {
       });
     }
 
-    res.status(201).json({ 
-      success: true, 
-      message: "Espacio de entrevista reservado exitosamente.", 
-      data: reservaData[0], 
-      fich_entrevista 
+    res.status(201).json({
+      success: true,
+      message: "Espacio de entrevista reservado exitosamente.",
+      data: reservaData[0],
+      fich_entrevista
     });
 
   } catch (err) {
@@ -215,11 +214,10 @@ const reserveInterviewSlot = async (req, res) => {
   }
 };
 
-// NOTA: Eliminar 'export' aquí
 const cancelInterviewReservation = async (req, res) => {
   try {
-    const { id } = req.params; 
-    const { postulacion_id } = req.body; 
+    const { id } = req.params;
+    const { postulacion_id } = req.body;
 
     if (!id) {
       return res.status(400).json({ success: false, message: "ID de reserva es obligatorio para cancelar." });
@@ -253,7 +251,7 @@ const cancelInterviewReservation = async (req, res) => {
       .select('cupos_disponibles')
       .eq('id', reservation.dia_entrevista_id)
       .single();
-    
+
     if (!diaFetchError && diaEntrevista) {
         const { error: updateCuposError } = await supabase
             .from('dias_entrevista')
@@ -266,10 +264,10 @@ const cancelInterviewReservation = async (req, res) => {
     } else {
         console.warn("Día de entrevista no encontrado al intentar liberar cupo después de cancelar.");
     }
-    
+
     const { error: updatePostulacionError } = await supabase
       .from('Postulaciones')
-      .update({ estado: 'Postulado' }) 
+      .update({ estado: 'Postulado' })
       .eq('id', reservation.postulacion_id);
 
     if (updatePostulacionError) {
@@ -283,26 +281,147 @@ const cancelInterviewReservation = async (req, res) => {
 };
 
 
-// --- Funciones para Gestión Humana (RRHH) - (Serán desarrolladas en fases posteriores) ---
-// NOTA: Eliminar 'export' aquí también, si se van a exportar al final
-const manageInterviewDays = async (req, res) => {
-    res.status(501).json({ success: false, message: "Funcionalidad manageInterviewDays no implementada." });
+// --- Funciones para Gestión Humana (RRHH) ---
+
+const createInterviewDay = async (req, res) => {
+    try {
+        const { fecha, cupos_totales } = req.body;
+
+        if (!fecha || !cupos_totales) {
+            return res.status(400).json({ success: false, message: "Fecha y cupos totales son obligatorios para crear un día de entrevista." });
+        }
+
+        // Verificar si ya existe un día con esa fecha para evitar duplicados
+        const { data: existingDay, error: existingDayError } = await supabase
+            .from('dias_entrevista')
+            .select('id')
+            .eq('fecha', fecha)
+            .maybeSingle(); // Usar maybeSingle para que no arroje error si no encuentra
+
+        if (existingDayError && existingDayError.code !== 'PGRST116') { // PGRST116 means no rows found
+            console.error("Error Supabase al verificar día existente:", existingDayError);
+            return handleError(res, "Error al verificar día de entrevista existente", existingDayError);
+        }
+
+        if (existingDay) {
+            return res.status(409).json({ success: false, message: `Ya existe un día de entrevista agendado para la fecha ${fecha}.` });
+        }
+
+        const { data, error } = await supabase
+            .from('dias_entrevista')
+            .insert([
+                { fecha, cupos_totales, cupos_disponibles: cupos_totales, estado: 'Activo' }
+            ])
+            .select();
+
+        if (error) {
+            console.error("Error Supabase al crear día de entrevista:", error);
+            return handleError(res, "Error al crear el día de entrevista", error);
+        }
+
+        res.status(201).json({ success: true, message: "Día de entrevista creado exitosamente.", data: data[0] });
+    } catch (err) {
+        handleError(res, "Error inesperado al crear día de entrevista", err);
+    }
 };
 
-const getAllInterviewDays = async (req, res) => {
-    res.status(501).json({ success: false, message: "Funcionalidad getAllInterviewDays no implementada." });
+const getAllInterviewDaysAdmin = async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('dias_entrevista')
+            .select('*')
+            .order('fecha', { ascending: true }); // Ordenar por fecha para mejor visualización
+
+        if (error) {
+            console.error("Error Supabase al obtener todos los días de entrevista (Admin):", error);
+            return handleError(res, "Error al obtener los días de entrevista para administración", error);
+        }
+
+        res.status(200).json({ success: true, data: data || [] });
+    } catch (err) {
+        handleError(res, "Error inesperado al obtener días de entrevista (Admin)", err);
+    }
+};
+
+const getInterviewDayDetails = async (req, res) => {
+    try {
+        const { id } = req.params; // ID del día de entrevista
+
+        const { data: dayDetails, error: dayError } = await supabase
+            .from('dias_entrevista')
+            .select(`
+                id,
+                fecha,
+                cupos_totales,
+                cupos_disponibles,
+                estado,
+                reservas_entrevista (
+                    id,
+                    fich_entrevista,
+                    hora_reserva,
+                    postulacion:Postulaciones (nombreApellido, numeroDocumento, correo)
+                )
+            `)
+            .eq('id', id)
+            .single();
+
+        if (dayError) {
+            console.error("Error Supabase al obtener detalles del día de entrevista:", dayError);
+            return handleError(res, "Día de entrevista no encontrado.", dayError, 404);
+        }
+
+        res.status(200).json({ success: true, data: dayDetails });
+    } catch (err) {
+        handleError(res, "Error inesperado al obtener detalles del día de entrevista", err);
+    }
 };
 
 const deleteInterviewDay = async (req, res) => {
-    res.status(501).json({ success: false, message: "Funcionalidad deleteInterviewDay no implementada." });
-};
+    try {
+        const { id } = req.params;
 
-const getInterviewReservations = async (req, res) => {
-    res.status(501).json({ success: false, message: "Funcionalidad getInterviewReservations no implementada." });
-};
+        if (!id) {
+            return res.status(400).json({ success: false, message: "ID del día de entrevista es obligatorio para eliminar." });
+        }
 
-const updateInterviewReservationStatus = async (req, res) => {
-    res.status(501).json({ success: false, message: "Funcionalidad updateInterviewReservationStatus no implementada." });
+        // Obtener las postulaciones asociadas a este día para revertir su estado ANTES de eliminar el día
+        const { data: reservationsToCancel, error: resFetchError } = await supabase
+            .from('reservas_entrevista')
+            .select('postulacion_id')
+            .eq('dia_entrevista_id', id);
+
+        if (resFetchError) {
+            console.error("Error al obtener reservas para revertir estado de postulaciones:", resFetchError);
+            // No interrumpir la eliminación del día, pero loggear el error.
+        }
+
+        const { error: deleteDayError } = await supabase
+            .from('dias_entrevista')
+            .delete()
+            .eq('id', id);
+
+        if (deleteDayError) {
+            console.error("Error Supabase al eliminar día de entrevista:", deleteDayError);
+            return handleError(res, "Error al eliminar el día de entrevista", deleteDayError);
+        }
+
+        // Revertir el estado de las postulaciones que tenían reserva para este día
+        if (reservationsToCancel && reservationsToCancel.length > 0) {
+            const postulacionIdsToUpdate = reservationsToCancel.map(res => res.postulacion_id);
+            const { error: updatePostulacionesError } = await supabase
+                .from('Postulaciones')
+                .update({ estado: 'Postulado' })
+                .in('id', postulacionIdsToUpdate);
+
+            if (updatePostulacionesError) {
+                console.error("Error al revertir estado de postulaciones después de eliminar día:", updatePostulacionesError);
+            }
+        }
+
+        res.status(200).json({ success: true, message: "Día de entrevista y reservas asociadas eliminadas exitosamente." });
+    } catch (err) {
+        handleError(res, "Error inesperado al eliminar día de entrevista", err);
+    }
 };
 
 // --- EXPORTACIÓN FINAL DE TODAS LAS FUNCIONES ---
@@ -311,10 +430,8 @@ export {
     getAvailableInterviewDays,
     reserveInterviewSlot,
     cancelInterviewReservation,
-    // Asegúrate de que estas funciones también estén aquí si las vas a usar en registroRoutes.js
-    manageInterviewDays, 
-    getAllInterviewDays,
+    createInterviewDay,
+    getAllInterviewDaysAdmin,
+    getInterviewDayDetails,
     deleteInterviewDay,
-    getInterviewReservations,
-    updateInterviewReservationStatus
 };
