@@ -108,6 +108,44 @@ const getAvailableInterviewDays = async (req, res) => {
     handleError(res, "Error inesperado al obtener días de entrevista", err);
   }
 };
+
+const updateInterviewDayStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { estado } = req.body; // El nuevo estado que se enviará (ej: 'Finalizado', 'Activo', 'Inactivo')
+
+        if (!id || !estado) {
+            return res.status(400).json({ success: false, message: "ID del día y el estado son obligatorios para actualizar." });
+        }
+
+        // Opcional: Validar que el estado sea uno de los permitidos
+        const allowedStates = ['Activo', 'Inactivo', 'Finalizado']; // Define tus estados posibles
+        if (!allowedStates.includes(estado)) {
+            return res.status(400).json({ success: false, message: `Estado inválido: ${estado}. Los estados permitidos son ${allowedStates.join(', ')}.` });
+        }
+
+        const { data, error } = await supabase
+            .from('dias_entrevista')
+            .update({ estado: estado })
+            .eq('id', id)
+            .select(); // Retorna el registro actualizado
+
+        if (error) {
+            console.error("Error Supabase al actualizar estado del día de entrevista:", error);
+            return handleError(res, "Error al actualizar el estado del día de entrevista", error);
+        }
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({ success: false, message: "Día de entrevista no encontrado." });
+        }
+
+        res.status(200).json({ success: true, message: "Estado del día de entrevista actualizado exitosamente.", data: data[0] });
+
+    } catch (err) {
+        handleError(res, "Error inesperado al actualizar estado del día de entrevista", err);
+    }
+};
+
 const reserveInterviewSlot = async (req, res) => {
   try {
     const { postulacion_id, dia_entrevista_id, hora_reserva } = req.body;
@@ -489,4 +527,5 @@ export {
     getInterviewDayDetails,
     deleteInterviewDay,
     updateInterviewAttendanceStatus,
+    updateInterviewDayStatus,
 };

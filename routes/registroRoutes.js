@@ -40,7 +40,8 @@ import {
   getAllInterviewDaysAdmin,
   getInterviewDayDetails,
   deleteInterviewDay,
-  updateInterviewAttendanceStatus, // <--- ¡NUEVA FUNCIÓN IMPORTADA!
+  updateInterviewAttendanceStatus,
+  updateInterviewDayStatus,
 } from "../controllers/entrevistasController.js";
 
 
@@ -99,6 +100,7 @@ router.get("/api/entrevistas/check-postulante/:numeroDocumento", checkPostulante
 router.get("/api/entrevistas/disponibilidad", getAvailableInterviewDays);
 router.post("/api/entrevistas/reservar", reserveInterviewSlot);
 router.delete("/api/entrevistas/cancelar/:id", cancelInterviewReservation);
+router.patch("/api/admin/entrevistas/day/:id/status", authenticate, updateInterviewDayStatus);
 
 
 // --- NUEVAS RUTAS DE AGENDAMIENTO PARA ADMINISTRACIÓN (RRHH) ---
