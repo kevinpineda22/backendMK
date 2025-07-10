@@ -55,6 +55,8 @@ export const enviarFormulario = async (req, res) => {
       fechaNacimiento,
       tipoDocumento,
       numeroDocumento,
+      grupoPoblacional, // Nuevo campo
+      aceptoNotificaciones, // Nuevo campo
     } = req.body;
 
     // --- Validaciones de campos ---
@@ -70,6 +72,8 @@ export const enviarFormulario = async (req, res) => {
       fechaNacimiento: "Fecha de Nacimiento",
       tipoDocumento: "Tipo de Documento",
       numeroDocumento: "Número de Documento",
+      grupoPoblacional: "Grupo Poblacional", // Nuevo campo requerido
+      aceptoNotificaciones: "Autorización de notificaciones electrónicas", // Nuevo campo requerido
     };
 
     const missingFields = Object.keys(requiredFields).filter(
@@ -134,6 +138,26 @@ export const enviarFormulario = async (req, res) => {
         });
     }
 
+    // Validación para grupoPoblacional
+    const allowedPoblacionalGroups = [
+        "General", "Discapacitados", "Madre_Cabeza_Hogar", "Desplazados",
+        "Minorias_Etnicas", "Reinsertados", "Victimas_Conflicto", "Otro"
+    ];
+    if (!allowedPoblacionalGroups.includes(grupoPoblacional)) {
+        return res.status(400).json({
+            success: false,
+            message: "El grupo poblacional seleccionado no es válido.",
+        });
+    }
+
+    // Validación para aceptoNotificaciones (debe ser un booleano y true)
+    if (typeof aceptoNotificaciones !== "boolean" || !aceptoNotificaciones) {
+        return res.status(400).json({
+            success: false,
+            message: "Debes autorizar las notificaciones electrónicas.",
+        });
+    }
+
     const { data: existingData, error: checkError } = await supabase
       .from("Postulaciones")
       .select("id")
@@ -167,6 +191,8 @@ export const enviarFormulario = async (req, res) => {
           fechaNacimiento,
           tipoDocumento,
           numeroDocumento,
+          grupoPoblacional, // Guardar el nuevo campo
+          aceptoNotificaciones, // Guardar el nuevo campo
           check_BD: false,
           estado: "Postulado",
         },
@@ -192,6 +218,7 @@ export const enviarFormulario = async (req, res) => {
                     <strong>Documento:</strong> ${tipoDocumento} ${numeroDocumento}<br />
                     <strong>Empresa a la que postula:</strong> ${empresaPostula}<br />
                     <strong>Cargo deseado:</strong> ${cargo}<br />
+                    <strong>Grupo Poblacional:</strong> ${grupoPoblacional}<br />
                     <strong>Correo:</strong> ${correo}<br />
                     <strong>Teléfono:</strong> ${telefono}
                 </p>
@@ -388,12 +415,20 @@ export const getStats = async (req, res) => {
       return acc;
     }, {});
 
+    // Nuevo: Conteo por grupo poblacional
+    const grupoPoblacionalCounts = data.reduce((acc, curr) => {
+      acc[curr.grupoPoblacional] = (acc[curr.grupoPoblacional] || 0) + 1;
+      return acc;
+    }, {});
+
+
     res.status(200).json({
       success: true,
       stats: {
         genderCounts,
         educationCounts,
         cityCounts,
+        grupoPoblacionalCounts, // Incluir el nuevo conteo
       },
     });
   } catch (err) {
