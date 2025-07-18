@@ -365,7 +365,7 @@ const getInterviewDayDetails = async (req, res) => {
                     fich_entrevista,
                     hora_reserva,
                     estado_asistencia,
-                    postulacion:Postulaciones (nombreApellido, numeroDocumento, correo, cargo) // ¡Incluido 'cargo' aquí!
+                    postulacion:Postulaciones (nombreApellido, numeroDocumento, correo, cargo) 
                 )
             `)
             .eq('id', id)
