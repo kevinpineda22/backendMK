@@ -232,11 +232,11 @@ export const enviarFormulario = async (req, res) => {
             </div>
         `;
 
-    await sendEmailService({
+    /* await sendEmailService({
       to: ["johanmerkahorro777@gmail.com"],
       subject: `Nueva Postulación Recibida - ${nombreApellido}`,
       html: emailBodyForHR,
-    });
+    }); */
 
     res.status(200).json({
       success: true,
