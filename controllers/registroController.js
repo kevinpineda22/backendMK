@@ -57,6 +57,7 @@ export const enviarFormulario = async (req, res) => {
       numeroDocumento,
       grupoPoblacional, // Nuevo campo
       aceptoNotificaciones, // Nuevo campo
+      comoSeEntero, // NUEVO CAMPO
     } = req.body;
 
     // --- Validaciones de campos ---
@@ -74,6 +75,7 @@ export const enviarFormulario = async (req, res) => {
       numeroDocumento: "Número de Documento",
       grupoPoblacional: "Grupo Poblacional", // Nuevo campo requerido
       aceptoNotificaciones: "Autorización de notificaciones electrónicas", // Nuevo campo requerido
+      comoSeEntero: "Cómo se enteró de la vacante", // Nuevo campo requerido
     };
 
     const missingFields = Object.keys(requiredFields).filter(
@@ -90,37 +92,29 @@ export const enviarFormulario = async (req, res) => {
     }
 
     if (!/^[A-Za-záéíóúÁÉÍÓÚüÜñÑ\s]{1,50}$/.test(nombreApellido)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "El nombre y apellido solo puede contener letras y espacios (máx. 50 caracteres).",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "El nombre y apellido solo puede contener letras y espacios (máx. 50 caracteres).",
+      });
     }
     if (!/^\d{5,10}$/.test(numeroDocumento)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El número de documento debe tener entre 5 y 10 dígitos.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El número de documento debe tener entre 5 y 10 dígitos.",
+      });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El correo electrónico no es válido.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El correo electrónico no es válido.",
+      });
     }
     if (!/^(3\d{9}|[1-9]\d{6,9})$/.test(telefono.replace(/\D/g, ""))) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El número de teléfono no es válido (7-10 dígitos).",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El número de teléfono no es válido (7-10 dígitos).",
+      });
     }
     const birthDate = new Date(fechaNacimiento);
     const today = new Date();
@@ -130,32 +124,36 @@ export const enviarFormulario = async (req, res) => {
       age--;
     }
     if (age < 18) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Debes ser mayor de 18 años para postularte.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Debes ser mayor de 18 años para postularte.",
+      });
     }
 
     // Validación para grupoPoblacional
     const allowedPoblacionalGroups = [
-        "General", "Discapacitados", "Madre_Cabeza_Hogar", "Desplazados",
-        "Minorias_Etnicas", "Reinsertados", "Victimas_Conflicto", "Otro"
+      "General",
+      "Discapacitados",
+      "Madre_Cabeza_Hogar",
+      "Desplazados",
+      "Minorias_Etnicas",
+      "Reinsertados",
+      "Victimas_Conflicto",
+      "Otro",
     ];
     if (!allowedPoblacionalGroups.includes(grupoPoblacional)) {
-        return res.status(400).json({
-            success: false,
-            message: "El grupo poblacional seleccionado no es válido.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El grupo poblacional seleccionado no es válido.",
+      });
     }
 
     // Validación para aceptoNotificaciones (debe ser un booleano y true)
     if (typeof aceptoNotificaciones !== "boolean" || !aceptoNotificaciones) {
-        return res.status(400).json({
-            success: false,
-            message: "Debes autorizar las notificaciones electrónicas.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Debes autorizar las notificaciones electrónicas.",
+      });
     }
 
     const { data: existingData, error: checkError } = await supabase
@@ -193,6 +191,7 @@ export const enviarFormulario = async (req, res) => {
           numeroDocumento,
           grupoPoblacional, // Guardar el nuevo campo
           aceptoNotificaciones, // Guardar el nuevo campo
+          comoSeEntero, // Guardar el nuevo campo
           check_BD: false,
           estado: "Postulado",
         },
@@ -254,12 +253,10 @@ export const updateCheckBD = async (req, res) => {
     const { check_BD } = req.body;
 
     if (typeof check_BD !== "boolean") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El campo check_BD debe ser un valor booleano.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El campo check_BD debe ser un valor booleano.",
+      });
     }
 
     const { data, error } = await supabase
@@ -272,13 +269,11 @@ export const updateCheckBD = async (req, res) => {
       return handleError(res, "Error al actualizar check_BD", error);
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Campo check_BD actualizado correctamente.",
-        data,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Campo check_BD actualizado correctamente.",
+      data,
+    });
   } catch (err) {
     handleError(res, "Error inesperado", err);
   }
@@ -290,12 +285,10 @@ export const updateObservacionBD = async (req, res) => {
     const { observacion_BD } = req.body;
 
     if (typeof observacion_BD !== "string") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El campo observacion_BD debe ser un valor de texto.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El campo observacion_BD debe ser un valor de texto.",
+      });
     }
 
     const { data, error } = await supabase
@@ -308,13 +301,11 @@ export const updateObservacionBD = async (req, res) => {
       return handleError(res, "Error al actualizar observacion_BD", error);
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Campo observacion_BD actualizado correctamente.",
-        data,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Campo observacion_BD actualizado correctamente.",
+      data,
+    });
   } catch (err) {
     handleError(res, "Error inesperado", err);
   }
@@ -326,12 +317,10 @@ export const updateEstado = async (req, res) => {
     const { estado, ejecutado_por = "Sistema", sede } = req.body;
 
     if (!estado || typeof estado !== "string") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El campo 'estado' es obligatorio y debe ser texto.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El campo 'estado' es obligatorio y debe ser texto.",
+      });
     }
 
     const updateData = { estado };
@@ -380,13 +369,11 @@ export const updateEstado = async (req, res) => {
       );
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Estado actualizado correctamente.",
-        data: data[0],
-      });
+    res.status(200).json({
+      success: true,
+      message: "Estado actualizado correctamente.",
+      data: data[0],
+    });
   } catch (err) {
     handleError(res, "Error inesperado al actualizar estado", err);
   }
@@ -420,7 +407,6 @@ export const getStats = async (req, res) => {
       acc[curr.grupoPoblacional] = (acc[curr.grupoPoblacional] || 0) + 1;
       return acc;
     }, {});
-
 
     res.status(200).json({
       success: true,
@@ -541,22 +527,18 @@ export const subirDocumento = async (req, res) => {
     });
 
     if (!postulacion_id || !tipo || !archivo) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Faltan campos requeridos: postulacion_id, tipo o archivo.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Faltan campos requeridos: postulacion_id, tipo o archivo.",
+      });
     }
 
     const parsedPostulacionId = parseInt(postulacion_id);
     if (isNaN(parsedPostulacionId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El postulacion_id debe ser un número entero válido.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El postulacion_id debe ser un número entero válido.",
+      });
     }
 
     const { data: postulacion, error: postulacionError } = await supabase
@@ -608,13 +590,11 @@ export const subirDocumento = async (req, res) => {
       );
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Documento subido y registrado correctamente.",
-        url: publicUrl,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Documento subido y registrado correctamente.",
+      url: publicUrl,
+    });
   } catch (err) {
     handleError(res, "Error inesperado al procesar el documento", err);
   }
@@ -626,23 +606,19 @@ export const subirDocumentosMultiples = async (req, res) => {
     const archivos = req.files;
 
     if (!postulacion_id || !archivos || !tipos || !categorias) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Faltan campos requeridos: postulacion_id, archivos, tipos o categorias.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Faltan campos requeridos: postulacion_id, archivos, tipos o categorias.",
+      });
     }
 
     const parsedPostulacionId = parseInt(postulacion_id);
     if (isNaN(parsedPostulacionId)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "El postulacion_id debe ser un número entero válido.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "El postulacion_id debe ser un número entero válido.",
+      });
     }
 
     const tiposArray = Array.isArray(tipos) ? tipos : [tipos];
@@ -658,13 +634,11 @@ export const subirDocumentosMultiples = async (req, res) => {
       archivos.length !== beneficiarioIdsArray.length ||
       archivos.length !== categoriasArray.length
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "El número de archivos no coincide con el número de tipos, beneficiarioIds o categorias.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "El número de archivos no coincide con el número de tipos, beneficiarioIds o categorias.",
+      });
     }
 
     const { data: postulacion, error: postulacionError } = await supabase
@@ -704,12 +678,10 @@ export const subirDocumentosMultiples = async (req, res) => {
       (tipo) => !allTypes.includes(tipo)
     );
     if (missingMandatory.length > 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: `Faltan documentos obligatorios: ${missingMandatory.join(", ")}.`,
-        });
+      return res.status(400).json({
+        success: false,
+        message: `Faltan documentos obligatorios: ${missingMandatory.join(", ")}.`,
+      });
     }
 
     const uploadedDocuments = [];
@@ -766,13 +738,11 @@ export const subirDocumentosMultiples = async (req, res) => {
       });
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: `${uploadedDocuments.length} documento(s) subido(s) y registrado(s) correctamente.`,
-        data: uploadedDocuments,
-      });
+    res.status(200).json({
+      success: true,
+      message: `${uploadedDocuments.length} documento(s) subido(s) y registrado(s) correctamente.`,
+      data: uploadedDocuments,
+    });
   } catch (err) {
     handleError(res, "Error inesperado al procesar los documentos", err);
   }
@@ -796,12 +766,10 @@ export const eliminarDocumento = async (req, res) => {
 
     const urlParts = documento.url.split("/documentos/");
     if (urlParts.length < 2) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "URL de documento inválida para extracción de ruta.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "URL de documento inválida para extracción de ruta.",
+      });
     }
     const filePathInStorage = urlParts[1];
 
@@ -845,12 +813,10 @@ export const sendEmail = async (req, res) => {
     const { to, subject, message, html, postulacionId } = req.body;
 
     if (!to || !subject || (!message && !html)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Faltan parámetros requeridos: to, subject, y message/html.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Faltan parámetros requeridos: to, subject, y message/html.",
+      });
     }
 
     const result = await sendEmailService({
@@ -872,13 +838,11 @@ export const registrarHistorial = async (req, res) => {
     const { postulacion_id, accion, ejecutado_por, observacion } = req.body;
 
     if (!postulacion_id || !accion || !ejecutado_por) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Faltan campos requeridos: postulacion_id, accion, ejecutado_por.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Faltan campos requeridos: postulacion_id, accion, ejecutado_por.",
+      });
     }
 
     const { data, error } = await supabase
@@ -918,20 +882,16 @@ export const updateCodigoRequisicion = async (req, res) => {
 
     if (error) throw error;
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Código de requisición actualizado.",
-        data,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Código de requisición actualizado.",
+      data,
+    });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error al actualizar código de requisición.",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error al actualizar código de requisición.",
+      error: err.message,
+    });
   }
 };
