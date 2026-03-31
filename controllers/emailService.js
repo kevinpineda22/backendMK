@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
     // Opcional: Recomendaciones para Office365
     tls: {
       ciphers: 'TLSv1.2',
-      // rejectUnauthorized: true // Descomentar en producción para mayor seguridad
+      rejectUnauthorized: true
     }
 });
 

@@ -44,17 +44,27 @@ import {
   updateInterviewDayStatus,
 } from "../controllers/entrevistasController.js";
 
+import rateLimit from "express-rate-limit";
 
 // --- Inicialización del Router ---
 const router = Router();
 
-// --- Middlewares (Ejemplo - DEBES IMPLEMENTAR LA LÓGICA REAL PARA PRODUCCIÓN) ---
-const authenticate = (req, res, next) => {
-    // ESTO ES SOLO UN MARCADOR DE POSICIÓN.
-    // Para producción, DEBES implementar una autenticación real (JWT, sesiones, etc.)
-    // para proteger las rutas de administración.
-    console.log("Middleware de autenticación: Usuario autenticado (simulado)");
-    next();
+// --- Rate limiter estricto para endpoints de email ---
+const emailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // máximo 10 emails por IP cada 15 min
+  message: { success: false, message: "Demasiadas solicitudes de email, intenta más tarde." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// --- Middleware de autenticación por API Key ---
+const authenticateApiKey = (req, res, next) => {
+  const apiKey = req.headers["x-api-key"];
+  if (!apiKey || apiKey !== process.env.INTERNAL_API_KEY) {
+    return res.status(401).json({ success: false, message: "No autorizado." });
+  }
+  next();
 };
 
 
@@ -84,8 +94,8 @@ router.post("/api/historial", registrarHistorial); // Registro en historial_post
 // Rutas de Actualización de Estado de Postulaciones
 router.put("/estado/:id", updateEstado); // Actualizar estado de una postulación
 
-// Rutas de Envío de Correos (genérica, usada por el backend para notificaciones)
-router.post("/api/send-email", sendEmail);
+// Rutas de Envío de Correos (protegida con API Key + rate limiting)
+router.post("/api/send-email", authenticateApiKey, emailLimiter, sendEmail);
 
 
 // Rutas de SOLICITUD DE PERSONAL

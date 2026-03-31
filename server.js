@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser"; // Importar bodyParser
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
 import registroRoutes from "./routes/registroRoutes.js";
 
 dotenv.config();
@@ -34,6 +35,16 @@ app.options('*', cors());
 // CRÍTICO: Asegurarse de que bodyParser.json() y bodyParser.urlencoded() estén ANTES de las rutas
 app.use(bodyParser.json()); // Para parsear JSON en el body de las peticiones
 app.use(bodyParser.urlencoded({ extended: true })); // Para parsear application/x-www-form-urlencoded
+
+// Rate limiting global
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Demasiadas solicitudes, intenta más tarde." },
+});
+app.use(globalLimiter);
 
 // Rutas
 app.use(registroRoutes); 
