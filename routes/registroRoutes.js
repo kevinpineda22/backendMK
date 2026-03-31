@@ -110,16 +110,15 @@ router.get("/api/entrevistas/check-postulante/:numeroDocumento", checkPostulante
 router.get("/api/entrevistas/disponibilidad", getAvailableInterviewDays);
 router.post("/api/entrevistas/reservar", reserveInterviewSlot);
 router.delete("/api/entrevistas/cancelar/:id", cancelInterviewReservation);
-router.patch("/api/admin/entrevistas/day/:id/status", authenticate, updateInterviewDayStatus);
+router.patch("/api/admin/entrevistas/day/:id/status", authenticateApiKey, updateInterviewDayStatus);
 
 
 // --- NUEVAS RUTAS DE AGENDAMIENTO PARA ADMINISTRACIÓN (RRHH) ---
-// Estas rutas DEBERÍAN estar protegidas por un middleware de autenticación REAL.
-router.post("/api/admin/entrevistas/day", authenticate, createInterviewDay); // Crear un nuevo día disponible
-router.get("/api/admin/entrevistas/days", authenticate, getAllInterviewDaysAdmin); // Obtener todos los días con sus cupos
-router.get("/api/admin/entrevistas/day/:id", authenticate, getInterviewDayDetails); // Obtener detalles de un día y sus reservas
-router.delete("/api/admin/entrevistas/day/:id", authenticate, deleteInterviewDay); // Eliminar un día y sus reservas
-router.patch("/api/admin/entrevistas/reserva/:reservaId/status", authenticate, updateInterviewAttendanceStatus); // <--- ¡NUEVA RUTA!
+router.post("/api/admin/entrevistas/day", authenticateApiKey, createInterviewDay);
+router.get("/api/admin/entrevistas/days", authenticateApiKey, getAllInterviewDaysAdmin);
+router.get("/api/admin/entrevistas/day/:id", authenticateApiKey, getInterviewDayDetails);
+router.delete("/api/admin/entrevistas/day/:id", authenticateApiKey, deleteInterviewDay);
+router.patch("/api/admin/entrevistas/reserva/:reservaId/status", authenticateApiKey, updateInterviewAttendanceStatus);
 
 
 // --- Exportar el Router ---
