@@ -9,6 +9,11 @@ dotenv.config();
 
 const app = express();
 
+// Vercel (y cualquier serverless detrás de proxy) inyecta X-Forwarded-For.
+// Sin esto, express-rate-limit tira ERR_ERL_FORWARDED_HEADER y deja el IP del
+// proxy como key, lo que invalida el rate-limit y llena los logs de warnings.
+app.set("trust proxy", 1);
+
 const allowedOrigins = [
   'http://localhost:5173', 
   'https://merkahorro.com', 
