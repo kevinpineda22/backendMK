@@ -3,6 +3,7 @@ import multer from "multer";
 import { getCurrentColombiaTimeISO } from "../utils/timeUtils.js";
 import { sendEmail as sendEmailService } from "./emailService.js";
 import { handleError } from "../utils/errorHandler.js";
+import { evaluarElegibilidad } from "../utils/postulacionPolicy.js";
 
 // Configuración de Multer para documentos
 const storage = multer.memoryStorage();
@@ -156,20 +157,28 @@ export const enviarFormulario = async (req, res) => {
       });
     }
 
-    const { data: existingData, error: checkError } = await supabase
+    // Verificación de elegibilidad: una persona puede tener N postulaciones,
+    // sujetas a las reglas de utils/postulacionPolicy.js (postulación activa
+    // bloquea, cooldown tras rechazo/inactividad, contratado no re-aplica).
+    const { data: postulacionesPrevias, error: checkError } = await supabase
       .from("Postulaciones")
-      .select("id")
-      .eq("numeroDocumento", numeroDocumento)
-      .limit(1);
+      .select("id, estado, empresaPostula, cargo, fechaPostulacion, created_at")
+      .eq("numeroDocumento", numeroDocumento);
 
     if (checkError) {
-      return handleError(res, "Error al verificar el documento", checkError);
+      return handleError(res, "Error al verificar el historial de postulaciones", checkError);
     }
 
-    if (existingData.length > 0) {
-      return res.status(400).json({
+    const elegibilidad = evaluarElegibilidad(postulacionesPrevias || []);
+    if (!elegibilidad.permitido) {
+      return res.status(409).json({
         success: false,
-        message: `El número de documento ${numeroDocumento} ya está registrado.`,
+        message: elegibilidad.razon,
+        code: elegibilidad.code,
+        postulacion_activa: elegibilidad.postulacion_activa || null,
+        ultima_postulacion: elegibilidad.ultima_postulacion || null,
+        cooldown_hasta: elegibilidad.cooldown_hasta || null,
+        dias_restantes: elegibilidad.dias_restantes || null,
       });
     }
 
@@ -893,5 +902,101 @@ export const updateCodigoRequisicion = async (req, res) => {
       message: "Error al actualizar código de requisición.",
       error: err.message,
     });
+  }
+};
+
+// --- Endpoints públicos de elegibilidad e historial ---
+//
+// Permiten al frontend del formulario (Trabaja.jsx) verificar de antemano si
+// una persona puede postularse, sin gatillar el envío completo. Y al panel
+// admin consultar el histórico completo de un documento.
+
+export const verificarElegibilidad = async (req, res) => {
+  try {
+    const { numeroDocumento } = req.params;
+
+    if (!numeroDocumento || !/^\d{5,10}$/.test(numeroDocumento)) {
+      return res.status(400).json({
+        success: false,
+        message: "Número de documento inválido (debe tener entre 5 y 10 dígitos).",
+      });
+    }
+
+    const { data: postulacionesPrevias, error } = await supabase
+      .from("Postulaciones")
+      .select("id, estado, empresaPostula, cargo, fechaPostulacion, created_at")
+      .eq("numeroDocumento", numeroDocumento);
+
+    if (error) {
+      return handleError(res, "Error al consultar postulaciones previas", error);
+    }
+
+    const elegibilidad = evaluarElegibilidad(postulacionesPrevias || []);
+
+    return res.status(200).json({
+      success: true,
+      permitido: elegibilidad.permitido,
+      code: elegibilidad.code,
+      razon: elegibilidad.razon,
+      primera_postulacion: elegibilidad.primera_postulacion || false,
+      repostulacion: elegibilidad.repostulacion || false,
+      postulaciones_anteriores: elegibilidad.postulaciones_anteriores || 0,
+      postulacion_activa: elegibilidad.postulacion_activa || null,
+      ultima_postulacion: elegibilidad.ultima_postulacion || null,
+      cooldown_hasta: elegibilidad.cooldown_hasta || null,
+      dias_restantes: elegibilidad.dias_restantes || null,
+    });
+  } catch (err) {
+    handleError(res, "Error inesperado al verificar elegibilidad", err);
+  }
+};
+
+export const obtenerHistorialPostulaciones = async (req, res) => {
+  try {
+    const { numeroDocumento } = req.params;
+
+    if (!numeroDocumento || !/^\d{5,10}$/.test(numeroDocumento)) {
+      return res.status(400).json({
+        success: false,
+        message: "Número de documento inválido.",
+      });
+    }
+
+    const { data: postulaciones, error } = await supabase
+      .from("Postulaciones")
+      .select("*")
+      .eq("numeroDocumento", numeroDocumento)
+      .order("fechaPostulacion", { ascending: false });
+
+    if (error) {
+      return handleError(res, "Error al obtener el historial de postulaciones", error);
+    }
+
+    // Obtener historial de movimientos de estado de cada postulación
+    const ids = (postulaciones || []).map((p) => p.id);
+    let historialMovimientos = [];
+
+    if (ids.length > 0) {
+      const { data: movs, error: histError } = await supabase
+        .from("historial_postulacion")
+        .select("*")
+        .in("postulacion_id", ids)
+        .order("creado_en", { ascending: false });
+
+      if (histError) {
+        console.error("Error al obtener historial de movimientos:", histError.message);
+      } else {
+        historialMovimientos = movs || [];
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      total: (postulaciones || []).length,
+      postulaciones: postulaciones || [],
+      historial_movimientos: historialMovimientos,
+    });
+  } catch (err) {
+    handleError(res, "Error inesperado al obtener historial", err);
   }
 };

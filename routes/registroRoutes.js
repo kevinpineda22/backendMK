@@ -21,6 +21,8 @@ import {
   sendEmail, // general sendEmail function
   registrarHistorial,
   updateCodigoRequisicion,
+  verificarElegibilidad,
+  obtenerHistorialPostulaciones,
 } from "../controllers/registroController.js";
 
 // 2. solicitudPersonalController (funciones de solicitud de personal)
@@ -90,6 +92,12 @@ router.delete("/api/documentos/:id", eliminarDocumento); // Eliminar un document
 // Rutas de Formulario de Postulación y Historial
 router.post("/api/enviar", enviarFormulario); // Envío del formulario de Trabaja.jsx
 router.post("/api/historial", registrarHistorial); // Registro en historial_postulacion
+
+// Rutas de Elegibilidad e Historial de Postulaciones por Documento
+// Permiten al frontend hacer preflight antes de mostrar el formulario completo,
+// y al panel admin consultar el histórico de un documento.
+router.get("/api/personas/:numeroDocumento/puede-postular", verificarElegibilidad);
+router.get("/api/personas/:numeroDocumento/historial", obtenerHistorialPostulaciones);
 
 // Rutas de Actualización de Estado de Postulaciones
 router.put("/estado/:id", updateEstado); // Actualizar estado de una postulación

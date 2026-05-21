@@ -5,6 +5,7 @@ import {
   getCurrentColombiaDate,
 } from "../utils/timeUtils.js";
 import { sendEmail as sendEmailService } from "./emailService.js";
+import { seleccionarPostulacionRelevante } from "../utils/postulacionPolicy.js";
 import crypto from "crypto";
 
 // --- Funciones para Postulantes (Flujo de Agendamiento) ---
@@ -22,11 +23,14 @@ const checkPostulanteForInterview = async (req, res) => {
         });
     }
 
-    const { data: postulacion, error } = await supabase
+    // Una persona puede tener varias postulaciones (re-postulaciones permitidas).
+    // Para el flujo de entrevista nos interesa la postulación activa más
+    // reciente. Si no hay activas, devolvemos la última registrada.
+    const { data: postulaciones, error } = await supabase
       .from("Postulaciones")
-      .select("id, nombreApellido, correo, estado, numeroDocumento, cargo")
+      .select("id, nombreApellido, correo, estado, numeroDocumento, cargo, fechaPostulacion")
       .eq("numeroDocumento", numeroDocumento)
-      .maybeSingle();
+      .order("fechaPostulacion", { ascending: false });
 
     if (error) {
       console.error("Error Supabase en checkPostulanteForInterview:", error);
@@ -37,13 +41,15 @@ const checkPostulanteForInterview = async (req, res) => {
       );
     }
 
+    const postulacion = seleccionarPostulacionRelevante(postulaciones || []);
+
     if (!postulacion) {
       return res
         .status(404)
         .json({
           success: false,
           message:
-            "Postulación no encontrada con este documento. Por favor, asegúrate de haber completado el formulario de postulación.",
+            "Postulación no encontrada con este documento. Por favor, asegúrese de haber completado el formulario de postulación antes de agendar.",
         });
     }
 
